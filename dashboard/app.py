@@ -7,6 +7,18 @@ st.title("🐎 JordyMac Racing Engine")
 st.write("Last Updated:", datetime.now())
 st_autorefresh(interval=30000, key="refresh")
 
+uploaded_file = st.file_uploader(
+    "Upload Race CSV",
+    type=["csv"]
+)
+
+if uploaded_file is not None:
+
+    uploaded_df = pd.read_csv(uploaded_file)
+
+    st.subheader("Uploaded Race CSV")
+
+    st.dataframe(uploaded_df)
 race = st.sidebar.selectbox(
     "Choose Race",
     [
@@ -77,7 +89,12 @@ df = df.sort_values(
 if overlay_only:
 
     df = df[df["Overlay"] == True]
+# STOP IF NO RUNNERS FOUND
+if df.empty:
 
+    st.warning("No runners found. Try changing the search or turning off overlay filter.")
+
+    st.stop()
 # COLOUR ROWS
 def colour_rows(row):
 
@@ -95,7 +112,70 @@ styled_df = df.style.apply(
 
 # DISPLAY TABLE
 st.dataframe(styled_df)
+# DASHBOARD STATS
+overlay_count = len(df[df["Overlay"] == True])
 
+market_percentage = round(
+    (100 / df["Market Odds"]).sum(),
+    2
+)
+
+best_overlay = df.sort_values(
+    by="Overlay %",
+    ascending=False
+).iloc[0]
+# METRIC CARDS
+col1, col2, col3 = st.columns(3)
+
+with col1:
+
+    st.metric(
+        "Overlay Count",
+        overlay_count
+    )
+
+with col2:
+
+    st.metric(
+        "Market %",
+        f"{market_percentage}%"
+    )
+
+with col3:
+
+    st.metric(
+        "Best Overlay",
+        best_overlay["Horse"]
+    )
+    # BIG OVERLAY ALERT
+if best_overlay["Overlay %"] >= 20:
+
+    st.success(
+        f"🔥 BIG OVERLAY FOUND: {best_overlay['Horse']} at {best_overlay['Market Odds']}"
+    )
+
+else:
+
+    st.info("No major overlay above 20% in this race.")
+    # DOWNLOAD ANALYSED RACE
+csv_output = df.to_csv(index=False)
+
+st.download_button(
+    label="Download Analysed Race CSV",
+    data=csv_output,
+    file_name="analysed_race.csv",
+    mime="text/csv"
+)
+# SIDEBAR STATS
+st.sidebar.metric(
+    "Overlays",
+    overlay_count
+)
+
+st.sidebar.metric(
+    "Market %",
+    f"{market_percentage}%"
+)
 # TOP PICK
 top_pick = df.iloc[0]
 

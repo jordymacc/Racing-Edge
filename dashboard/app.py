@@ -359,7 +359,56 @@ if st.button("Save Analysed Race to Database"):
 
     st.success("Analysed race saved to database ✅")
 
+# -----------------------------
+# VIEW SAVED ANALYSED RACES
+# -----------------------------
+st.subheader("Saved Analysed Races 🗄️")
 
+try:
+
+    conn = sqlite3.connect("database/racing.db")
+
+    saved_tables = pd.read_sql(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'analysed_%'",
+        conn
+    )
+
+    if saved_tables.empty:
+
+        st.info("No analysed races saved yet.")
+
+    else:
+
+        saved_race_table = st.selectbox(
+            "Choose a saved analysed race",
+            saved_tables["name"].tolist(),
+            key="saved_race_selector"
+        )
+
+        saved_df = pd.read_sql(
+            f"SELECT * FROM {saved_race_table}",
+            conn
+        )
+
+        st.dataframe(saved_df)
+
+        saved_csv = saved_df.to_csv(index=False)
+
+        st.download_button(
+            label="Download Saved Race CSV",
+            data=saved_csv,
+            file_name=f"{saved_race_table}.csv",
+            mime="text/csv",
+            key="download_saved_race"
+        )
+
+    conn.close()
+
+except Exception as error:
+
+    st.warning("Could not load saved analysed races yet.")
+
+    st.write(error)
 # -----------------------------
 # SIDEBAR STATS
 # -----------------------------

@@ -12,7 +12,38 @@ from ratings_engine import (
     create_basic_rating,
     calculate_fair_odds
 )
+# -----------------------------
+# SAFE APP COLUMN HELPER
+# -----------------------------
+def ensure_app_columns(dataframe):
+    """
+    Makes sure the dashboard columns exist before the app displays tables.
+    This prevents KeyError crashes on Streamlit Cloud when older data
+    does not have newer columns like Bet Call or Model Notes.
+    """
 
+    safe_df = dataframe.copy()
+
+    default_values = {
+        "Horse": "",
+        "Rating": 0,
+        "Confidence": 0,
+        "Win Execution": 0,
+        "Fair Odds": 0,
+        "Market Odds": 0,
+        "Overlay": False,
+        "Overlay %": 0,
+        "Bet Call": "NO BET ❌",
+        "Model Notes": "No model notes available"
+    }
+
+    for column, default_value in default_values.items():
+
+        if column not in safe_df.columns:
+
+            safe_df[column] = default_value
+
+    return safe_df
 
 # -----------------------------
 # PAGE SETUP
@@ -346,6 +377,8 @@ if df.empty:
 
     st.stop()
 
+# Make sure all dashboard display columns exist
+df = ensure_app_columns(df)
 
 # -----------------------------
 # SEARCH + FILTERS

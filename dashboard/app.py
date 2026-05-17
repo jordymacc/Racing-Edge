@@ -541,7 +541,80 @@ else:
 
     value_pick = "None"
 
+# -----------------------------
+# TOP 4 SELECTIONS
+# -----------------------------
+st.subheader("Top 4 Selections 🏆")
 
+top_4 = df.head(4).reset_index(drop=True)
+
+selection_cols = st.columns(4)
+
+for i, col in enumerate(selection_cols):
+
+    if i < len(top_4):
+
+        runner = top_4.iloc[i]
+
+        with col:
+
+            st.metric(
+                label=f"#{i + 1}",
+                value=runner["Horse"]
+            )
+
+            st.write(f"Rating: {runner['Rating']}")
+            st.write(f"Fair Odds: {runner['Fair Odds']}")
+            st.write(f"Market Odds: {runner['Market Odds']}")
+            st.write(f"Confidence: {runner['Confidence']}/10")
+
+            if runner["Overlay"]:
+
+                st.success("Overlay ✅")
+
+            else:
+
+                st.error("No Overlay ❌")
+                # -----------------------------
+# RACE SUMMARY
+# -----------------------------
+st.subheader("Race Summary 📝")
+
+top_pick_preview = df.iloc[0]
+
+if overlay_count >= 2:
+
+    race_summary = "This race has multiple overlay chances. The model sees possible market weakness."
+
+elif top_pick_preview["Rating"] >= 90:
+
+    race_summary = "The model has found a clear top-rated runner with strong win confidence."
+
+elif market_percentage >= 120:
+
+    race_summary = "This market looks high-overround or potentially compressed. Be careful forcing a bet."
+
+else:
+
+    race_summary = "This race looks moderate. Use the Top Pick and Value Pick carefully."
+
+st.write(race_summary)
+# -----------------------------
+# BET / NO BET WARNING
+# -----------------------------
+st.subheader("Bet / No Bet Read 🚦")
+
+if top_pick_preview["Confidence"] >= 9 and overlay_count >= 1:
+
+    st.success("BET RACE ✅ Strong confidence and at least one overlay detected.")
+
+elif top_pick_preview["Confidence"] >= 8:
+
+    st.info("WATCH / POSSIBLE BET 👀 Strong top pick, but check price carefully.")
+
+else:
+
+    st.warning("NO BET LEAN ❌ Confidence is not strong enough yet.")
 # -----------------------------
 # FINAL CALL
 # -----------------------------

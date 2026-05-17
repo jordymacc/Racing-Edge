@@ -237,8 +237,6 @@ def calculate_win_execution_score(df):
     """
     Win Execution Score /10.
 
-    This estimates how likely a horse is to actually get a clean winning run.
-
     Early version uses:
     - Market Odds
     - Barrier / BP if available
@@ -329,6 +327,81 @@ def calculate_win_execution_score(df):
     return score.round(1)
 
 
+def create_model_note(row):
+    """
+    Creates a simple written explanation for each runner.
+    """
+
+    rating = row.get("Rating", 0)
+    fair_odds = row.get("Fair Odds", 0)
+    market_odds = row.get("Market Odds", 0)
+    overlay = row.get("Overlay", False)
+    overlay_percent = row.get("Overlay %", 0)
+    win_execution = row.get("Win Execution", 0)
+
+    notes = []
+
+    if rating >= 90:
+        notes.append("Elite rating profile")
+    elif rating >= 85:
+        notes.append("Strong rating profile")
+    elif rating >= 75:
+        notes.append("Competitive rating")
+    else:
+        notes.append("Lower rating profile")
+
+    if win_execution >= 8:
+        notes.append("strong win execution")
+    elif win_execution >= 7:
+        notes.append("solid win execution")
+    elif win_execution >= 6:
+        notes.append("some execution risk")
+    else:
+        notes.append("high execution risk")
+
+    if overlay and overlay_percent >= 20:
+        notes.append("clear market overlay")
+    elif overlay:
+        notes.append("minor overlay")
+    else:
+        notes.append("not an overlay at current price")
+
+    if market_odds <= fair_odds:
+        notes.append("price looks tight")
+    else:
+        notes.append("price gives some room")
+
+    return " + ".join(notes)
+
+
+def create_bet_call(row):
+    """
+    Creates a simple betting call for each runner.
+    """
+
+    rating = row.get("Rating", 0)
+    overlay = row.get("Overlay", False)
+    overlay_percent = row.get("Overlay %", 0)
+    win_execution = row.get("Win Execution", 0)
+
+    if rating >= 90 and win_execution >= 8:
+        return "WIN CONFIDENCE BET ✅"
+
+    if rating >= 85 and win_execution >= 7 and overlay:
+        return "BACK IF PRICE HOLDS ✅"
+
+    if overlay and overlay_percent >= 20 and win_execution >= 6.5:
+        return "VALUE WATCH 💰"
+
+    if rating >= 85 and win_execution < 7:
+        return "TOP PICK BUT EXECUTION RISK ⚠️"
+
+    if overlay and win_execution < 6:
+        return "PLACE / WATCH ONLY 👀"
+
+    return "NO BET ❌"
+
+
 def analyse_race(df):
     """
     Cleans race data, calculates:
@@ -336,6 +409,8 @@ def analyse_race(df):
     - Confidence
     - Overlay %
     - Win Execution
+    - Model Notes
+    - Bet Call
     - Sorts by rating
     """
     df = df.copy()
@@ -378,6 +453,16 @@ def analyse_race(df):
     )
 
     df["Win Execution"] = calculate_win_execution_score(df)
+
+    df["Model Notes"] = df.apply(
+        create_model_note,
+        axis=1
+    )
+
+    df["Bet Call"] = df.apply(
+        create_bet_call,
+        axis=1
+    )
 
     df = df.sort_values(
         by="Rating",

@@ -511,21 +511,22 @@ with ratings_tab:
     st.subheader("Race Ratings 🐎")
 
     ratings_view = df[
-        [
-            "Horse",
-            "Rating",
-            "Confidence",
-            "Fair Odds",
-            "Market Odds",
-            "Overlay",
-            "Overlay %",
-            "Win Execution"
-        ]
-    ].sort_values(
-        by="Rating",
-        ascending=False
-    )
-
+    [
+        "Horse",
+        "Rating",
+        "Confidence",
+        "Win Execution",
+        "Fair Odds",
+        "Market Odds",
+        "Overlay",
+        "Overlay %",
+        "Bet Call",
+        "Model Notes"
+    ]
+].sort_values(
+    by="Rating",
+    ascending=False
+)
     st.dataframe(ratings_view)
 
     st.write("### Top 4 Rated")
@@ -572,14 +573,16 @@ with overlays_tab:
         st.dataframe(
             overlay_df[
                 [
-                    "Horse",
-                    "Rating",
-                    "Fair Odds",
-                    "Market Odds",
-                    "Overlay %",
-                    "Confidence",
-                    "Win Execution"
-                ]
+    "Horse",
+    "Rating",
+    "Fair Odds",
+    "Market Odds",
+    "Overlay %",
+    "Confidence",
+    "Win Execution",
+    "Bet Call",
+    "Model Notes"
+]
             ]
         )
 
@@ -599,14 +602,14 @@ with execution_tab:
 
     execution_view = df[
         [
-            "Horse",
-            "Rating",
-            "Confidence",
-            "Win Execution",
-            "Fair Odds",
-            "Market Odds",
-            "Overlay"
-        ]
+    "Horse",
+    "Rating",
+    "Confidence",
+    "Win Execution",
+    "Fair Odds",
+    "Market Odds",
+    "Overlay"
+]
     ].sort_values(
         by="Win Execution",
         ascending=False
@@ -787,7 +790,7 @@ else:
     )
 
 
-# -----------------------------
+## -----------------------------
 # TOP 4 SELECTIONS
 # -----------------------------
 st.subheader("Top 4 Selections 🏆")
@@ -815,6 +818,12 @@ for i, col in enumerate(selection_cols):
             st.write(f"Confidence: {runner['Confidence']}/10")
             st.write(f"Win Execution: {runner['Win Execution']}/10")
 
+            if "Bet Call" in runner:
+                st.write(f"Call: {runner['Bet Call']}")
+
+            if "Model Notes" in runner:
+                st.write(runner["Model Notes"])
+
             if runner["Overlay"]:
 
                 st.success("Overlay ✅")
@@ -822,8 +831,6 @@ for i, col in enumerate(selection_cols):
             else:
 
                 st.error("No Overlay ❌")
-
-
 # -----------------------------
 # RACE SUMMARY
 # -----------------------------
@@ -998,13 +1005,181 @@ else:
 # FINAL CALL
 # -----------------------------
 # -----------------------------
-# RESULTS TRACKER
+# BET LOGGER + RESULTS TRACKER
 # -----------------------------
-st.subheader("Results Tracker 📈")
+st.subheader("Bet Logger + Results Tracker 📈")
 
-if os.path.exists("results.csv"):
+results_file = "results.csv"
 
-    results_df = pd.read_csv("results.csv")
+results_columns = [
+    "Date",
+    "Race",
+    "Horse",
+    "Bet Type",
+    "Stake",
+    "Odds",
+    "Result",
+    "Profit"
+]
+
+# Create results.csv if it does not exist
+if not os.path.exists(results_file):
+
+    empty_results = pd.DataFrame(
+        columns=results_columns
+    )
+
+    empty_results.to_csv(
+        results_file,
+        index=False
+    )
+
+
+# Load existing results
+results_df = pd.read_csv(results_file)
+
+
+# BET ENTRY FORM
+with st.form("bet_logger_form"):
+
+    st.write("Add a new bet/result")
+
+    bet_col1, bet_col2 = st.columns(2)
+
+    with bet_col1:
+
+        bet_date = st.text_input(
+            "Date",
+            value=datetime.now().strftime("%Y-%m-%d")
+        )
+
+        bet_race = st.text_input(
+            "Race",
+            value=race
+        )
+
+        bet_horse = st.text_input(
+            "Horse"
+        )
+
+        bet_type = st.selectbox(
+            "Bet Type",
+            [
+                "Win",
+                "Place",
+                "Each-Way",
+                "No Bet",
+                "Watch Only"
+            ]
+        )
+
+    with bet_col2:
+
+        bet_stake = st.number_input(
+            "Stake / Units",
+            min_value=0.0,
+            value=1.0,
+            step=0.25
+        )
+
+        bet_odds = st.number_input(
+            "Odds",
+            min_value=0.0,
+            value=1.0,
+            step=0.10
+        )
+
+        bet_result = st.selectbox(
+            "Result",
+            [
+                "Pending",
+                "Win",
+                "Lose",
+                "Place"
+            ]
+        )
+
+        bet_profit = st.number_input(
+            "Profit / Loss",
+            value=0.0,
+            step=0.25
+        )
+
+    submitted_bet = st.form_submit_button(
+        "Save Bet"
+    )
+
+
+if submitted_bet:
+
+    if bet_horse.strip() == "":
+
+        st.warning("Please enter a horse name before saving.")
+
+    else:
+
+        new_bet = pd.DataFrame(
+            [
+                {
+                    "Date": bet_date,
+                    "Race": bet_race,
+                    "Horse": bet_horse,
+                    "Bet Type": bet_type,
+                    "Stake": bet_stake,
+                    "Odds": bet_odds,
+                    "Result": bet_result,
+                    "Profit": bet_profit
+                }
+            ]
+        )
+
+        results_df = pd.concat(
+            [
+                results_df,
+                new_bet
+            ],
+            ignore_index=True
+        )
+
+        results_df.to_csv(
+            results_file,
+            index=False
+        )
+
+        st.success("Bet saved to results tracker ✅")
+
+
+# RELOAD RESULTS AFTER SAVE
+results_df = pd.read_csv(results_file)
+
+
+# CLEAN NUMBER COLUMNS
+if not results_df.empty:
+
+    results_df["Stake"] = pd.to_numeric(
+        results_df["Stake"],
+        errors="coerce"
+    ).fillna(0)
+
+    results_df["Odds"] = pd.to_numeric(
+        results_df["Odds"],
+        errors="coerce"
+    ).fillna(0)
+
+    results_df["Profit"] = pd.to_numeric(
+        results_df["Profit"],
+        errors="coerce"
+    ).fillna(0)
+
+
+# DISPLAY RESULTS
+st.write("### Saved Betting Results")
+
+if results_df.empty:
+
+    st.info("No bets saved yet.")
+
+else:
 
     st.dataframe(results_df)
 
@@ -1014,13 +1189,16 @@ if os.path.exists("results.csv"):
 
     if total_staked > 0:
 
-        roi = round((total_profit / total_staked) * 100, 2)
+        roi = round(
+            (total_profit / total_staked) * 100,
+            2
+        )
 
     else:
 
         roi = 0
 
-    result_col1, result_col2, result_col3 = st.columns(3)
+    result_col1, result_col2, result_col3, result_col4 = st.columns(4)
 
     with result_col1:
 
@@ -1043,6 +1221,13 @@ if os.path.exists("results.csv"):
             f"{roi}%"
         )
 
+    with result_col4:
+
+        st.metric(
+            "Bets Logged",
+            len(results_df)
+        )
+
     if total_profit > 0:
 
         st.success("Current results are profitable ✅")
@@ -1055,40 +1240,14 @@ if os.path.exists("results.csv"):
 
         st.error("Current results are negative ❌")
 
-else:
 
-    st.info("No results.csv file found yet.")
-st.subheader("FINAL CALL ⭐")
+# DOWNLOAD RESULTS
+results_csv = results_df.to_csv(index=False)
 
-st.metric(
-    label="BEST BET",
-    value=top_pick["Horse"]
+st.download_button(
+    label="Download Results CSV",
+    data=results_csv,
+    file_name="results.csv",
+    mime="text/csv",
+    key="download_results_csv"
 )
-
-st.success(
-    f"Top Pick: {top_pick['Horse']}"
-)
-
-st.info(
-    f"Value Pick: {value_pick}"
-)
-
-st.write(
-    f"Confidence: {top_pick['Confidence']}/10"
-)
-
-st.write(
-    f"Win Execution: {top_pick['Win Execution']}/10"
-)
-
-if top_pick["Rating"] >= 90 and top_pick["Win Execution"] >= 8:
-
-    st.write("BET: YES ✅")
-
-elif top_pick["Rating"] >= 85:
-
-    st.write("BET: WATCH PRICE 👀")
-
-else:
-
-    st.write("BET: NO ❌")

@@ -5,6 +5,13 @@ import pandas as pd
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 
+from ratings_engine import (
+    analyse_race,
+    clean_number_column,
+    create_basic_rating,
+    calculate_fair_odds
+)
+
 
 # -----------------------------
 # PAGE SETUP
@@ -48,20 +55,6 @@ table_names = {
     "Pakenham Race 1": "pakenham_r1",
     "Morphettville Race 3": "morphettville_r3"
 }
-
-
-# -----------------------------
-# HELPER FUNCTION: CLEAN ODDS
-# -----------------------------
-def clean_number_column(series):
-    return pd.to_numeric(
-        series
-        .astype(str)
-        .str.replace("$", "", regex=False)
-        .str.replace(",", "", regex=False)
-        .str.replace(" ", "", regex=False),
-        errors="coerce"
-    )
 
 
 # -----------------------------
@@ -156,33 +149,24 @@ if missing_columns and uploaded_file is not None:
 
     mapped_df = pd.DataFrame()
 
-    # Horse name
     mapped_df["Horse"] = df[horse_col].astype(str)
 
-    # Rating
     if rating_col == auto_option:
 
-        mapped_df["Rating"] = [
-            max(40, 90 - (i * 3)) for i in range(len(df))
-        ]
+        mapped_df["Rating"] = create_basic_rating(df)
 
     else:
 
         mapped_df["Rating"] = clean_number_column(df[rating_col])
 
-    # Fair Odds / My Price
     if fair_odds_col == auto_option:
 
-        mapped_df["Fair Odds"] = round(
-            100 / mapped_df["Rating"],
-            2
-        )
+        mapped_df["Fair Odds"] = calculate_fair_odds(mapped_df["Rating"])
 
     else:
 
         mapped_df["Fair Odds"] = clean_number_column(df[fair_odds_col])
 
-    # Market Odds / Live Odds
     if market_odds_col == auto_option:
 
         mapped_df["Market Odds"] = mapped_df["Fair Odds"]
@@ -211,33 +195,13 @@ if missing_columns:
 
 
 # -----------------------------
-# CLEAN FINAL DATA
+# ANALYSE RACE
 # -----------------------------
-df["Horse"] = df["Horse"].astype(str)
-
-df["Rating"] = clean_number_column(df["Rating"])
-
-df["Fair Odds"] = clean_number_column(df["Fair Odds"])
-
-df["Market Odds"] = clean_number_column(df["Market Odds"])
-
-df = df.dropna(
-    subset=[
-        "Horse",
-        "Rating",
-        "Fair Odds",
-        "Market Odds"
-    ]
-)
-
-df = df[
-    (df["Fair Odds"] > 0) &
-    (df["Market Odds"] > 0)
-]
+df = analyse_race(df)
 
 if df.empty:
 
-    st.warning("No valid runners found after cleaning the data.")
+    st.warning("No valid runners found after analysing the data.")
 
     st.stop()
 
@@ -256,9 +220,6 @@ overlay_only = st.checkbox(
 )
 
 
-# -----------------------------
-# SEARCH FILTER
-# -----------------------------
 if search:
 
     df = df[
@@ -266,42 +227,6 @@ if search:
     ]
 
 
-# -----------------------------
-# OVERLAY CHECK
-# -----------------------------
-df["Overlay"] = df["Fair Odds"] < df["Market Odds"]
-
-
-# -----------------------------
-# CONFIDENCE SCORE
-# -----------------------------
-df["Confidence"] = round(
-    df["Rating"] / 10,
-    1
-)
-
-
-# -----------------------------
-# OVERLAY %
-# -----------------------------
-df["Overlay %"] = round(
-    ((df["Market Odds"] - df["Fair Odds"]) / df["Fair Odds"]) * 100,
-    1
-)
-
-
-# -----------------------------
-# SORT RUNNERS
-# -----------------------------
-df = df.sort_values(
-    by="Rating",
-    ascending=False
-)
-
-
-# -----------------------------
-# OVERLAY FILTER
-# -----------------------------
 if overlay_only:
 
     df = df[
@@ -309,9 +234,6 @@ if overlay_only:
     ]
 
 
-# -----------------------------
-# STOP IF NO RUNNERS FOUND
-# -----------------------------
 if df.empty:
 
     st.warning(
@@ -364,9 +286,6 @@ best_overlay = df.sort_values(
 ).iloc[0]
 
 
-# -----------------------------
-# METRIC CARDS
-# -----------------------------
 col1, col2, col3 = st.columns(3)
 
 with col1:
@@ -418,6 +337,27 @@ st.download_button(
     file_name="analysed_race.csv",
     mime="text/csv"
 )
+
+
+# -----------------------------
+# SAVE ANALYSED RACE TO DATABASE
+# -----------------------------
+if st.button("Save Analysed Race to Database"):
+
+    conn = sqlite3.connect("database/racing.db")
+
+    safe_table_name = race.lower().replace(" ", "_")
+
+    df.to_sql(
+        f"analysed_{safe_table_name}",
+        conn,
+        if_exists="replace",
+        index=False
+    )
+
+    conn.close()
+
+    st.success("Analysed race saved to database ✅")
 
 
 # -----------------------------

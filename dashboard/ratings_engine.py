@@ -470,3 +470,171 @@ def analyse_race(df):
     )
 
     return df
+# -----------------------------
+# VERSION 2 CONTEXT ADJUSTMENTS
+# -----------------------------
+def apply_v2_context_adjustments(df, race_context):
+    """
+    Version 2 race context layer.
+
+    Uses race-level inputs:
+    - Track condition
+    - Distance
+    - Race pressure
+
+    Then adjusts:
+    - Rating
+    - Fair Odds
+    - Overlay
+    - Confidence
+    - Model Notes
+    - Bet Call
+    """
+
+    df = df.copy()
+
+    track_condition = race_context.get("track_condition", "Good 4")
+    distance = race_context.get("distance", 1200)
+    race_pressure = race_context.get("race_pressure", "Even")
+
+    df["V2 Adjustment"] = 0.0
+    df["Race Context"] = f"{track_condition} | {distance}m | {race_pressure} pressure"
+
+    # Make sure key columns exist
+    if "Win Execution" not in df.columns:
+        df["Win Execution"] = 5.0
+
+    if "Model Notes" not in df.columns:
+        df["Model Notes"] = "No model notes available"
+
+    # -----------------------------
+    # RACE PRESSURE LOGIC
+    # -----------------------------
+    if race_pressure == "High":
+
+        df["V2 Adjustment"] = df["V2 Adjustment"] + df["Win Execution"].apply(
+            lambda x:
+            1.0 if x >= 8
+            else 0.3 if x >= 7
+            else -1.5 if x < 6
+            else -0.5
+        )
+
+        df["Model Notes"] = df["Model Notes"] + " + High-pressure race: execution matters more"
+
+    elif race_pressure == "Low":
+
+        df["V2 Adjustment"] = df["V2 Adjustment"] + df["Win Execution"].apply(
+            lambda x:
+            0.5 if x >= 7
+            else 0
+        )
+
+        df["Model Notes"] = df["Model Notes"] + " + Low-pressure race: tactical position may help"
+
+    else:
+
+        df["Model Notes"] = df["Model Notes"] + " + Even-pressure race profile"
+
+    # -----------------------------
+    # DISTANCE LOGIC
+    # -----------------------------
+    if distance >= 1800:
+
+        df["V2 Adjustment"] = df["V2 Adjustment"] + df["Win Execution"].apply(
+            lambda x:
+            0.7 if x >= 8
+            else -1.0 if x < 6
+            else 0
+        )
+
+        df["Model Notes"] = df["Model Notes"] + " + Staying race: stamina/execution upgraded"
+
+    elif distance <= 1200:
+
+        df["V2 Adjustment"] = df["V2 Adjustment"] + df["Win Execution"].apply(
+            lambda x:
+            0.5 if x >= 8
+            else -0.8 if x < 6
+            else 0
+        )
+
+        df["Model Notes"] = df["Model Notes"] + " + Sprint race: clean run and tactical speed important"
+
+    else:
+
+        df["Model Notes"] = df["Model Notes"] + " + Middle-distance race profile"
+
+    # -----------------------------
+    # TRACK CONDITION LOGIC
+    # -----------------------------
+    if "Heavy" in track_condition:
+
+        df["V2 Adjustment"] = df["V2 Adjustment"] + df["Win Execution"].apply(
+            lambda x:
+            0.5 if x >= 8
+            else -1.2 if x < 6
+            else -0.3
+        )
+
+        df["Model Notes"] = df["Model Notes"] + " + Heavy track: extra risk for poor execution profiles"
+
+    elif "Soft" in track_condition:
+
+        df["V2 Adjustment"] = df["V2 Adjustment"] + df["Win Execution"].apply(
+            lambda x:
+            0.3 if x >= 8
+            else -0.6 if x < 6
+            else 0
+        )
+
+        df["Model Notes"] = df["Model Notes"] + " + Soft track: wet-track suitability should be checked"
+
+    else:
+
+        df["V2 Adjustment"] = df["V2 Adjustment"] + df["Win Execution"].apply(
+            lambda x:
+            0.3 if x >= 8
+            else 0
+        )
+
+        df["Model Notes"] = df["Model Notes"] + " + Good-track race profile"
+
+    # -----------------------------
+    # APPLY ADJUSTMENTS
+    # -----------------------------
+    df["Rating"] = (
+        df["Rating"] + df["V2 Adjustment"]
+    ).clip(
+        lower=40,
+        upper=95
+    ).round(1)
+
+    df["Confidence"] = round(
+        df["Rating"] / 10,
+        1
+    )
+
+    df["Fair Odds"] = round(
+        100 / df["Rating"],
+        2
+    )
+
+    df["Overlay"] = df["Fair Odds"] < df["Market Odds"]
+
+    df["Overlay %"] = round(
+        ((df["Market Odds"] - df["Fair Odds"]) / df["Fair Odds"]) * 100,
+        1
+    )
+
+    df["Bet Call"] = df.apply(
+        create_bet_call,
+        axis=1
+    )
+
+    df = df.sort_values(
+        by="Rating",
+        ascending=False
+    )
+
+    return df

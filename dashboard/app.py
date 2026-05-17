@@ -10,7 +10,8 @@ from ratings_engine import (
     analyse_race,
     clean_number_column,
     create_basic_rating,
-    calculate_fair_odds
+    calculate_fair_odds,
+    apply_v2_context_adjustments
 )
 # -----------------------------
 # SAFE APP COLUMN HELPER
@@ -25,17 +26,19 @@ def ensure_app_columns(dataframe):
     safe_df = dataframe.copy()
 
     default_values = {
-        "Horse": "",
-        "Rating": 0,
-        "Confidence": 0,
-        "Win Execution": 0,
-        "Fair Odds": 0,
-        "Market Odds": 0,
-        "Overlay": False,
-        "Overlay %": 0,
-        "Bet Call": "NO BET ❌",
-        "Model Notes": "No model notes available"
-    }
+    "Horse": "",
+    "Rating": 0,
+    "Confidence": 0,
+    "Win Execution": 0,
+    "Fair Odds": 0,
+    "Market Odds": 0,
+    "Overlay": False,
+    "Overlay %": 0,
+    "Bet Call": "NO BET ❌",
+    "Model Notes": "No model notes available",
+    "V2 Adjustment": 0,
+    "Race Context": ""
+}
 
     for column, default_value in default_values.items():
 
@@ -215,7 +218,50 @@ model_weights = {
     "trainer": trainer_weight,
     "position": position_weight
 }
+# -----------------------------
+# VERSION 2 RACE CONTEXT CONTROLS
+# -----------------------------
+with st.sidebar.expander("V2 Race Context 🧠"):
 
+    track_condition = st.selectbox(
+        "Track Condition",
+        [
+            "Good 3",
+            "Good 4",
+            "Soft 5",
+            "Soft 6",
+            "Soft 7",
+            "Heavy 8",
+            "Heavy 9",
+            "Heavy 10"
+        ],
+        key="v2_track_condition"
+    )
+
+    race_distance = st.number_input(
+        "Race Distance (metres)",
+        min_value=800,
+        max_value=4000,
+        value=1200,
+        step=100,
+        key="v2_race_distance"
+    )
+
+    race_pressure = st.selectbox(
+        "Race Pressure",
+        [
+            "Low",
+            "Even",
+            "High"
+        ],
+        key="v2_race_pressure"
+    )
+
+race_context = {
+    "track_condition": track_condition,
+    "distance": race_distance,
+    "race_pressure": race_pressure
+}
 
 # -----------------------------
 # DATABASE TABLES
@@ -376,6 +422,12 @@ if df.empty:
     st.warning("No valid runners found after analysing the data.")
 
     st.stop()
+
+# Apply Version 2 race context layer
+df = apply_v2_context_adjustments(
+    df,
+    race_context
+)
 
 # Make sure all dashboard display columns exist
 df = ensure_app_columns(df)
@@ -722,7 +774,41 @@ with st.expander("Current Model Settings 🧠"):
     )
 
     st.dataframe(weights_df)
+# -----------------------------
+# VERSION 2 CONTEXT DISPLAY
+# -----------------------------
+with st.expander("Version 2 Race Context 🧠"):
 
+    st.write("These race-level settings are now being applied to the model.")
+
+    context_df = pd.DataFrame(
+        [
+            {
+                "Track Condition": race_context["track_condition"],
+                "Distance": race_context["distance"],
+                "Race Pressure": race_context["race_pressure"]
+            }
+        ]
+    )
+
+    st.dataframe(context_df)
+
+    v2_view = df[
+        [
+            "Horse",
+            "Rating",
+            "V2 Adjustment",
+            "Race Context",
+            "Win Execution",
+            "Bet Call",
+            "Model Notes"
+        ]
+    ].sort_values(
+        by="Rating",
+        ascending=False
+    )
+
+    st.dataframe(v2_view)
 
 # -----------------------------
 # WIN EXECUTION EXPLAINER

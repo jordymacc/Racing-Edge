@@ -1,3 +1,4 @@
+import os
 import sqlite3
 from datetime import datetime
 
@@ -21,7 +22,75 @@ st.title("🐎 JordyMac Racing Engine")
 st.write("Last Updated:", datetime.now())
 
 st_autorefresh(interval=30000, key="refresh")
+# -----------------------------
+# SYSTEM HEALTH CHECK
+# -----------------------------
+with st.expander("System Health Check 🛠️"):
 
+    health_checks = []
+
+    # Check app.py
+    health_checks.append(
+        {
+            "Check": "dashboard/app.py exists",
+            "Status": "✅ PASS" if os.path.exists("dashboard/app.py") else "❌ FAIL"
+        }
+    )
+
+    # Check ratings_engine.py
+    health_checks.append(
+        {
+            "Check": "dashboard/ratings_engine.py exists",
+            "Status": "✅ PASS" if os.path.exists("dashboard/ratings_engine.py") else "❌ FAIL"
+        }
+    )
+
+    # Check database
+    health_checks.append(
+        {
+            "Check": "database/racing.db exists",
+            "Status": "✅ PASS" if os.path.exists("database/racing.db") else "❌ FAIL"
+        }
+    )
+
+    # Check database tables
+    try:
+
+        conn_check = sqlite3.connect("database/racing.db")
+
+        table_check = pd.read_sql(
+            "SELECT name FROM sqlite_master WHERE type='table'",
+            conn_check
+        )
+
+        conn_check.close()
+
+        health_checks.append(
+            {
+                "Check": "SQLite database opens",
+                "Status": "✅ PASS"
+            }
+        )
+
+        health_checks.append(
+            {
+                "Check": "Database table count",
+                "Status": str(len(table_check))
+            }
+        )
+
+    except Exception as error:
+
+        health_checks.append(
+            {
+                "Check": "SQLite database opens",
+                "Status": f"❌ FAIL: {error}"
+            }
+        )
+
+    health_df = pd.DataFrame(health_checks)
+
+    st.dataframe(health_df)
 
 # -----------------------------
 # CSV UPLOADER
@@ -46,6 +115,8 @@ race = st.sidebar.selectbox(
     ],
     key="race_selector"
 )
+
+
 # -----------------------------
 # MODEL WEIGHT CONTROLS
 # -----------------------------
@@ -113,6 +184,7 @@ model_weights = {
     "trainer": trainer_weight,
     "position": position_weight
 }
+
 
 # -----------------------------
 # DATABASE TABLES
@@ -220,9 +292,9 @@ if missing_columns and uploaded_file is not None:
     if rating_col == auto_option:
 
         mapped_df["Rating"] = create_basic_rating(
-    df,
-    weights=model_weights
-)
+            df,
+            weights=model_weights
+        )
 
     else:
 
@@ -335,6 +407,8 @@ styled_df = df.style.apply(
 )
 
 st.dataframe(styled_df)
+
+
 # -----------------------------
 # MODEL SETTINGS DISPLAY
 # -----------------------------
@@ -365,6 +439,36 @@ with st.expander("Current Model Settings 🧠"):
 
     st.dataframe(weights_df)
 
+
+# -----------------------------
+# WIN EXECUTION EXPLAINER
+# -----------------------------
+with st.expander("Win Execution Score 🧠"):
+
+    st.write(
+        "This score estimates how cleanly a runner can actually win. "
+        "It currently uses market confidence, barrier/gate risk, weight carried, "
+        "and overlay status where those columns are available."
+    )
+
+    execution_df = df[
+        [
+            "Horse",
+            "Rating",
+            "Confidence",
+            "Win Execution",
+            "Fair Odds",
+            "Market Odds",
+            "Overlay"
+        ]
+    ].sort_values(
+        by="Win Execution",
+        ascending=False
+    )
+
+    st.dataframe(execution_df)
+
+
 # -----------------------------
 # DASHBOARD STATS
 # -----------------------------
@@ -382,8 +486,13 @@ best_overlay = df.sort_values(
     ascending=False
 ).iloc[0]
 
+best_execution = df.sort_values(
+    by="Win Execution",
+    ascending=False
+).iloc[0]
 
-col1, col2, col3 = st.columns(3)
+
+col1, col2, col3, col4 = st.columns(4)
 
 with col1:
 
@@ -406,6 +515,13 @@ with col3:
         best_overlay["Horse"]
     )
 
+with col4:
+
+    st.metric(
+        "Best Execution",
+        best_execution["Horse"]
+    )
+
 
 # -----------------------------
 # BIG OVERLAY ALERT
@@ -421,6 +537,91 @@ else:
     st.info(
         "No major overlay above 20% in this race."
     )
+
+
+# -----------------------------
+# TOP 4 SELECTIONS
+# -----------------------------
+st.subheader("Top 4 Selections 🏆")
+
+top_4 = df.head(4).reset_index(drop=True)
+
+selection_cols = st.columns(4)
+
+for i, col in enumerate(selection_cols):
+
+    if i < len(top_4):
+
+        runner = top_4.iloc[i]
+
+        with col:
+
+            st.metric(
+                label=f"#{i + 1}",
+                value=runner["Horse"]
+            )
+
+            st.write(f"Rating: {runner['Rating']}")
+            st.write(f"Fair Odds: {runner['Fair Odds']}")
+            st.write(f"Market Odds: {runner['Market Odds']}")
+            st.write(f"Confidence: {runner['Confidence']}/10")
+            st.write(f"Win Execution: {runner['Win Execution']}/10")
+
+            if runner["Overlay"]:
+
+                st.success("Overlay ✅")
+
+            else:
+
+                st.error("No Overlay ❌")
+
+
+# -----------------------------
+# RACE SUMMARY
+# -----------------------------
+st.subheader("Race Summary 📝")
+
+top_pick_preview = df.iloc[0]
+
+if overlay_count >= 2:
+
+    race_summary = "This race has multiple overlay chances. The model sees possible market weakness."
+
+elif top_pick_preview["Rating"] >= 90:
+
+    race_summary = "The model has found a clear top-rated runner with strong win confidence."
+
+elif market_percentage >= 120:
+
+    race_summary = "This market looks high-overround or potentially compressed. Be careful forcing a bet."
+
+else:
+
+    race_summary = "This race looks moderate. Use the Top Pick and Value Pick carefully."
+
+st.write(race_summary)
+
+
+# -----------------------------
+# BET / NO BET WARNING
+# -----------------------------
+st.subheader("Bet / No Bet Read 🚦")
+
+if top_pick_preview["Confidence"] >= 9 and top_pick_preview["Win Execution"] >= 8:
+
+    st.success("BET RACE ✅ Strong rating and strong win execution profile.")
+
+elif top_pick_preview["Confidence"] >= 8 and top_pick_preview["Win Execution"] >= 7:
+
+    st.info("WATCH / POSSIBLE BET 👀 Strong top pick, but check price and map carefully.")
+
+elif overlay_count >= 1 and best_overlay["Overlay %"] >= 20:
+
+    st.info("VALUE WATCH 💰 There is an overlay, but win execution still needs checking.")
+
+else:
+
+    st.warning("NO BET LEAN ❌ Confidence or win execution is not strong enough yet.")
 
 
 # -----------------------------
@@ -455,6 +656,7 @@ if st.button("Save Analysed Race to Database"):
     conn.close()
 
     st.success("Analysed race saved to database ✅")
+
 
 # -----------------------------
 # VIEW SAVED ANALYSED RACES
@@ -506,6 +708,8 @@ except Exception as error:
     st.warning("Could not load saved analysed races yet.")
 
     st.write(error)
+
+
 # -----------------------------
 # SIDEBAR STATS
 # -----------------------------
@@ -541,83 +745,71 @@ else:
 
     value_pick = "None"
 
-# -----------------------------
-# TOP 4 SELECTIONS
-# -----------------------------
-st.subheader("Top 4 Selections 🏆")
 
-top_4 = df.head(4).reset_index(drop=True)
-
-selection_cols = st.columns(4)
-
-for i, col in enumerate(selection_cols):
-
-    if i < len(top_4):
-
-        runner = top_4.iloc[i]
-
-        with col:
-
-            st.metric(
-                label=f"#{i + 1}",
-                value=runner["Horse"]
-            )
-
-            st.write(f"Rating: {runner['Rating']}")
-            st.write(f"Fair Odds: {runner['Fair Odds']}")
-            st.write(f"Market Odds: {runner['Market Odds']}")
-            st.write(f"Confidence: {runner['Confidence']}/10")
-
-            if runner["Overlay"]:
-
-                st.success("Overlay ✅")
-
-            else:
-
-                st.error("No Overlay ❌")
-                # -----------------------------
-# RACE SUMMARY
-# -----------------------------
-st.subheader("Race Summary 📝")
-
-top_pick_preview = df.iloc[0]
-
-if overlay_count >= 2:
-
-    race_summary = "This race has multiple overlay chances. The model sees possible market weakness."
-
-elif top_pick_preview["Rating"] >= 90:
-
-    race_summary = "The model has found a clear top-rated runner with strong win confidence."
-
-elif market_percentage >= 120:
-
-    race_summary = "This market looks high-overround or potentially compressed. Be careful forcing a bet."
-
-else:
-
-    race_summary = "This race looks moderate. Use the Top Pick and Value Pick carefully."
-
-st.write(race_summary)
-# -----------------------------
-# BET / NO BET WARNING
-# -----------------------------
-st.subheader("Bet / No Bet Read 🚦")
-
-if top_pick_preview["Confidence"] >= 9 and overlay_count >= 1:
-
-    st.success("BET RACE ✅ Strong confidence and at least one overlay detected.")
-
-elif top_pick_preview["Confidence"] >= 8:
-
-    st.info("WATCH / POSSIBLE BET 👀 Strong top pick, but check price carefully.")
-
-else:
-
-    st.warning("NO BET LEAN ❌ Confidence is not strong enough yet.")
 # -----------------------------
 # FINAL CALL
 # -----------------------------
+# -----------------------------
+# RESULTS TRACKER
+# -----------------------------
+st.subheader("Results Tracker 📈")
+
+if os.path.exists("results.csv"):
+
+    results_df = pd.read_csv("results.csv")
+
+    st.dataframe(results_df)
+
+    total_profit = results_df["Profit"].sum()
+
+    total_staked = results_df["Stake"].sum()
+
+    if total_staked > 0:
+
+        roi = round((total_profit / total_staked) * 100, 2)
+
+    else:
+
+        roi = 0
+
+    result_col1, result_col2, result_col3 = st.columns(3)
+
+    with result_col1:
+
+        st.metric(
+            "Total Profit",
+            f"{round(total_profit, 2)} units"
+        )
+
+    with result_col2:
+
+        st.metric(
+            "Total Staked",
+            f"{round(total_staked, 2)} units"
+        )
+
+    with result_col3:
+
+        st.metric(
+            "ROI",
+            f"{roi}%"
+        )
+
+    if total_profit > 0:
+
+        st.success("Current results are profitable ✅")
+
+    elif total_profit == 0:
+
+        st.info("Results are break-even so far.")
+
+    else:
+
+        st.error("Current results are negative ❌")
+
+else:
+
+    st.info("No results.csv file found yet.")
 st.subheader("FINAL CALL ⭐")
 
 st.metric(
@@ -637,9 +829,17 @@ st.write(
     f"Confidence: {top_pick['Confidence']}/10"
 )
 
-if top_pick["Rating"] >= 90:
+st.write(
+    f"Win Execution: {top_pick['Win Execution']}/10"
+)
+
+if top_pick["Rating"] >= 90 and top_pick["Win Execution"] >= 8:
 
     st.write("BET: YES ✅")
+
+elif top_pick["Rating"] >= 85:
+
+    st.write("BET: WATCH PRICE 👀")
 
 else:
 

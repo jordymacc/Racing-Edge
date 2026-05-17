@@ -142,7 +142,6 @@ def create_basic_rating(df, weights=None):
         ]
     )
 
-    # MARKET SCORE
     if odds_col is not None:
 
         market_score = normalise_score(
@@ -154,7 +153,6 @@ def create_basic_rating(df, weights=None):
 
         market_score = pd.Series([5] * len(df))
 
-    # BARRIER SCORE
     if barrier_col is not None:
 
         barrier_score = normalise_score(
@@ -166,7 +164,6 @@ def create_basic_rating(df, weights=None):
 
         barrier_score = pd.Series([5] * len(df))
 
-    # WEIGHT SCORE
     if weight_col is not None:
 
         weight_score = normalise_score(
@@ -178,7 +175,6 @@ def create_basic_rating(df, weights=None):
 
         weight_score = pd.Series([5] * len(df))
 
-    # JOCKEY SCORE
     if jockey_rating_col is not None:
 
         jockey_score = normalise_score(
@@ -190,7 +186,6 @@ def create_basic_rating(df, weights=None):
 
         jockey_score = pd.Series([5] * len(df))
 
-    # TRAINER SCORE
     if trainer_rating_col is not None:
 
         trainer_score = normalise_score(
@@ -202,7 +197,6 @@ def create_basic_rating(df, weights=None):
 
         trainer_score = pd.Series([5] * len(df))
 
-    # POSITION SCORE
     position_score = pd.Series(
         [max(1, 10 - (i * 0.6)) for i in range(len(df))]
     )
@@ -239,12 +233,109 @@ def calculate_fair_odds(rating_series):
     return fair_odds.round(2)
 
 
+def calculate_win_execution_score(df):
+    """
+    Win Execution Score /10.
+
+    This estimates how likely a horse is to actually get a clean winning run.
+
+    Early version uses:
+    - Market Odds
+    - Barrier / BP if available
+    - Weight / WT if available
+    - Overlay status if available
+    """
+
+    score = pd.Series([5.0] * len(df))
+
+    market_col = find_column(
+        df,
+        [
+            "Market Odds",
+            "Odds",
+            "Price",
+            "Win Odds",
+            "Fixed Odds",
+            "Live Odds"
+        ]
+    )
+
+    barrier_col = find_column(
+        df,
+        [
+            "Barrier",
+            "BP",
+            "Bar",
+            "Gate"
+        ]
+    )
+
+    weight_col = find_column(
+        df,
+        [
+            "Weight",
+            "WT",
+            "Wgt"
+        ]
+    )
+
+    if market_col is not None:
+
+        market_odds = clean_number_column(df[market_col])
+
+        score = score + market_odds.apply(
+            lambda x:
+            1.5 if x <= 4
+            else 1.0 if x <= 8
+            else 0.3 if x <= 15
+            else -0.5
+        )
+
+    if barrier_col is not None:
+
+        barrier = clean_number_column(df[barrier_col])
+
+        score = score + barrier.apply(
+            lambda x:
+            1.0 if x <= 6
+            else 0.3 if x <= 10
+            else -0.8
+        )
+
+    if weight_col is not None:
+
+        weight = clean_number_column(df[weight_col])
+
+        average_weight = weight.mean()
+
+        score = score + weight.apply(
+            lambda x:
+            0.8 if x < average_weight
+            else 0.2 if x == average_weight
+            else -0.5
+        )
+
+    if "Overlay" in df.columns:
+
+        score = score + df["Overlay"].apply(
+            lambda x: 0.5 if x else 0
+        )
+
+    score = score.clip(
+        lower=1,
+        upper=10
+    )
+
+    return score.round(1)
+
+
 def analyse_race(df):
     """
     Cleans race data, calculates:
     - Overlay
     - Confidence
     - Overlay %
+    - Win Execution
     - Sorts by rating
     """
     df = df.copy()
@@ -285,6 +376,8 @@ def analyse_race(df):
         ((df["Market Odds"] - df["Fair Odds"]) / df["Fair Odds"]) * 100,
         1
     )
+
+    df["Win Execution"] = calculate_win_execution_score(df)
 
     df = df.sort_values(
         by="Rating",

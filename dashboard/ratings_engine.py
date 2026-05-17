@@ -57,20 +57,39 @@ def normalise_score(series, higher_is_better=True):
     return score.fillna(5)
 
 
-def create_basic_rating(df):
+def create_basic_rating(df, weights=None):
     """
-    Basic JordyMac model v1.
+    Basic JordyMac model v2.
 
-    This tries to use:
+    Uses adjustable weights from the Streamlit sidebar.
+
+    Inputs it tries to use:
     - Market odds / price
     - Barrier / BP
     - Weight / WT
     - Jockey rating / JRat
     - Trainer rating / TRat
-
-    If columns are missing, it uses neutral scores.
+    - File order fallback
     """
+
     df = df.copy()
+
+    if weights is None:
+
+        weights = {
+            "market": 35,
+            "barrier": 15,
+            "weight": 10,
+            "jockey": 15,
+            "trainer": 15,
+            "position": 10
+        }
+
+    total_weight = sum(weights.values())
+
+    if total_weight == 0:
+
+        total_weight = 1
 
     odds_col = find_column(
         df,
@@ -124,70 +143,79 @@ def create_basic_rating(df):
     )
 
     # MARKET SCORE
-    # Shorter odds usually indicate market respect.
     if odds_col is not None:
+
         market_score = normalise_score(
             df[odds_col],
             higher_is_better=False
         )
+
     else:
+
         market_score = pd.Series([5] * len(df))
 
     # BARRIER SCORE
-    # Early simple rule: lower barriers get a small edge.
     if barrier_col is not None:
+
         barrier_score = normalise_score(
             df[barrier_col],
             higher_is_better=False
         )
+
     else:
+
         barrier_score = pd.Series([5] * len(df))
 
     # WEIGHT SCORE
-    # Lower weight gets a small edge.
     if weight_col is not None:
+
         weight_score = normalise_score(
             df[weight_col],
             higher_is_better=False
         )
+
     else:
+
         weight_score = pd.Series([5] * len(df))
 
     # JOCKEY SCORE
     if jockey_rating_col is not None:
+
         jockey_score = normalise_score(
             df[jockey_rating_col],
             higher_is_better=True
         )
+
     else:
+
         jockey_score = pd.Series([5] * len(df))
 
     # TRAINER SCORE
     if trainer_rating_col is not None:
+
         trainer_score = normalise_score(
             df[trainer_rating_col],
             higher_is_better=True
         )
+
     else:
+
         trainer_score = pd.Series([5] * len(df))
 
     # POSITION SCORE
-    # Small fallback based on file order.
     position_score = pd.Series(
         [max(1, 10 - (i * 0.6)) for i in range(len(df))]
     )
 
-    # WEIGHTED MODEL
     rating = (
-        (market_score * 0.35) +
-        (barrier_score * 0.15) +
-        (weight_score * 0.10) +
-        (jockey_score * 0.15) +
-        (trainer_score * 0.15) +
-        (position_score * 0.10)
-    )
+        (market_score * weights["market"]) +
+        (barrier_score * weights["barrier"]) +
+        (weight_score * weights["weight"]) +
+        (jockey_score * weights["jockey"]) +
+        (trainer_score * weights["trainer"]) +
+        (position_score * weights["position"])
+    ) / total_weight
 
-    # Convert 0-10 model into rating scale roughly 40-95
     final_rating = 40 + (rating * 5.5)
 
     final_rating = final_rating.clip(

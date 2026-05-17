@@ -46,7 +46,73 @@ race = st.sidebar.selectbox(
     ],
     key="race_selector"
 )
+# -----------------------------
+# MODEL WEIGHT CONTROLS
+# -----------------------------
+with st.sidebar.expander("Model Weights ⚖️"):
 
+    market_weight = st.slider(
+        "Market Weight",
+        min_value=0,
+        max_value=100,
+        value=35,
+        step=5,
+        key="market_weight"
+    )
+
+    barrier_weight = st.slider(
+        "Barrier Weight",
+        min_value=0,
+        max_value=100,
+        value=15,
+        step=5,
+        key="barrier_weight"
+    )
+
+    weight_weight = st.slider(
+        "Weight Carried Weight",
+        min_value=0,
+        max_value=100,
+        value=10,
+        step=5,
+        key="weight_weight"
+    )
+
+    jockey_weight = st.slider(
+        "Jockey Weight",
+        min_value=0,
+        max_value=100,
+        value=15,
+        step=5,
+        key="jockey_weight"
+    )
+
+    trainer_weight = st.slider(
+        "Trainer Weight",
+        min_value=0,
+        max_value=100,
+        value=15,
+        step=5,
+        key="trainer_weight"
+    )
+
+    position_weight = st.slider(
+        "File Order / Fallback Weight",
+        min_value=0,
+        max_value=100,
+        value=10,
+        step=5,
+        key="position_weight"
+    )
+
+model_weights = {
+    "market": market_weight,
+    "barrier": barrier_weight,
+    "weight": weight_weight,
+    "jockey": jockey_weight,
+    "trainer": trainer_weight,
+    "position": position_weight
+}
 
 # -----------------------------
 # DATABASE TABLES
@@ -153,7 +219,10 @@ if missing_columns and uploaded_file is not None:
 
     if rating_col == auto_option:
 
-        mapped_df["Rating"] = create_basic_rating(df)
+        mapped_df["Rating"] = create_basic_rating(
+    df,
+    weights=model_weights
+)
 
     else:
 
@@ -266,7 +335,35 @@ styled_df = df.style.apply(
 )
 
 st.dataframe(styled_df)
+# -----------------------------
+# MODEL SETTINGS DISPLAY
+# -----------------------------
+with st.expander("Current Model Settings 🧠"):
 
+    st.write("These are the current weights being used by the automatic rating model.")
+
+    weights_df = pd.DataFrame(
+        {
+            "Factor": [
+                "Market",
+                "Barrier",
+                "Weight Carried",
+                "Jockey",
+                "Trainer",
+                "File Order / Fallback"
+            ],
+            "Weight": [
+                model_weights["market"],
+                model_weights["barrier"],
+                model_weights["weight"],
+                model_weights["jockey"],
+                model_weights["trainer"],
+                model_weights["position"]
+            ]
+        }
+    )
+
+    st.dataframe(weights_df)
 
 # -----------------------------
 # DASHBOARD STATS

@@ -5,10 +5,15 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
-from csv_tools import (
-    create_race_template,
-    validate_uploaded_csv,
-    create_column_summary
+
+from ratings_engine import (
+    analyse_race,
+    clean_number_column,
+    create_basic_rating,
+    calculate_fair_odds,
+    apply_v2_context_adjustments,
+    apply_v23_template_scoring,
+    apply_manual_speed_map,
 )
 from ratings_engine import (
     analyse_race,
@@ -16,7 +21,8 @@ from ratings_engine import (
     create_basic_rating,
     calculate_fair_odds,
     apply_v2_context_adjustments,
-    apply_v23_template_scoring
+    apply_v23_template_scoring,
+    apply_manual_speed_map,
 )
 # -----------------------------
 # SAFE APP COLUMN HELPER
@@ -43,6 +49,8 @@ def ensure_app_columns(dataframe):
         "Track Suitability Score": 5,
         "Distance Suitability Score": 5,
         "V2.3 Template Score": 5,
+        "Map Position": "Neutral",
+        "Map Source": "CSV / Default",
     }
 
     for column, default_value in default_values.items():
@@ -571,7 +579,70 @@ df = apply_v2_context_adjustments(
     df,
     race_context
 )
+# -----------------------------
+# VERSION 2.4 MANUAL SPEED MAP INPUT
+# -----------------------------
+with st.expander("Version 2.4 Manual Speed Map Input 🐎"):
 
+    st.write(
+        "Set each runner's expected race position. "
+        "This feeds into the map score before the V2.3 template scoring runs."
+    )
+
+    if "Map Position" not in df.columns:
+        df["Map Position"] = "Neutral"
+
+    speed_map_editor_df = df[
+        [
+            "Horse",
+            "Map Position"
+        ]
+    ].copy()
+
+    speed_map_editor_df["Map Position"] = speed_map_editor_df["Map Position"].fillna("Neutral")
+
+    edited_speed_map_df = st.data_editor(
+        speed_map_editor_df,
+        hide_index=True,
+        use_container_width=True,
+        num_rows="fixed",
+        key="manual_speed_map_editor",
+        column_config={
+            "Map Position": st.column_config.SelectboxColumn(
+                "Map Position",
+                options=[
+                    "Lead",
+                    "On-speed",
+                    "Handy",
+                    "Midfield",
+                    "Back",
+                    "Wide",
+                    "Neutral"
+                ],
+                required=True
+            )
+        }
+    )
+
+    apply_manual_map = st.checkbox(
+        "Apply manual speed map to model",
+        value=False,
+        key="apply_manual_speed_map"
+    )
+
+    if apply_manual_map:
+
+        df = apply_manual_speed_map(
+            df,
+            edited_speed_map_df
+        )
+
+        st.success("Manual speed map applied to model ✅")
+
+    else:
+
+        if "Map Source" not in df.columns:
+            df["Map Source"] = "CSV / Default"
 # Apply Version 2.3 clean-template scoring
 df = apply_v23_template_scoring(df)
 
@@ -651,6 +722,8 @@ with st.expander("Version 2.3 Template Scoring Breakdown 🧠"):
         "Horse",
         "Rating",
         "V2.3 Template Score",
+        "Map Position",
+        "Map Source",
         "Map Score",
         "Recent Form Score",
         "Track Suitability Score",
@@ -661,14 +734,16 @@ with st.expander("Version 2.3 Template Scoring Breakdown 🧠"):
         "Bet Call"
     ]
 
+    v23_view = safe_view(
+        df,
+        v23_columns
+    ).sort_values(
+        by="V2.3 Template Score",
+        ascending=False
+    )
+
     st.dataframe(
-        safe_view(
-            df,
-            v23_columns
-        ).sort_values(
-            by="V2.3 Template Score",
-            ascending=False
-        ),
+        v23_view,
         use_container_width=True
     )
 # -----------------------------

@@ -767,3 +767,32 @@ def apply_v23_template_scoring(df):
     )
 
     return df
+# -----------------------------
+# VERSION 2.4 MANUAL SPEED MAP
+# -----------------------------
+def apply_manual_speed_map(df, speed_map_df):
+    """
+    Applies manually edited speed-map positions to the race dataframe.
+
+    This updates:
+    - Map Position
+    - Map Source
+    """
+
+    df = df.copy()
+
+    if speed_map_df is None or speed_map_df.empty:
+        return df
+
+    if "Horse" not in speed_map_df.columns or "Map Position" not in speed_map_df.columns:
+        return df
+
+    speed_map = speed_map_df.set_index("Horse")["Map Position"].to_dict()
+
+    df["Map Position"] = df["Horse"].map(speed_map).fillna(
+        df["Map Position"] if "Map Position" in df.columns else "Neutral"
+    )
+
+    df["Map Source"] = "Manual Speed Map"
+
+    return df

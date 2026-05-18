@@ -572,43 +572,35 @@ styled_df = df.style.apply(
 
 st.dataframe(styled_df)
 # -----------------------------
-# TABBED DASHBOARD
+# CLEAN TABBED DASHBOARD
 # -----------------------------
 st.subheader("Race Dashboard Tabs 🧭")
 
-# Safety check in case Win Execution is missing
-if "Win Execution" not in df.columns:
-    df["Win Execution"] = 5.0
+# Make sure required dashboard columns exist
+df = ensure_app_columns(df)
 
-# Dashboard calculations
-tab_overlay_count = len(
-    df[df["Overlay"] == True]
-)
+# Safety calculations
+overlay_count = len(df[df["Overlay"] == True])
 
-tab_market_percentage = round(
-    (100 / df["Market Odds"]).sum(),
+market_percentage = round(
+    (100 / pd.to_numeric(df["Market Odds"], errors="coerce").replace(0, pd.NA)).sum(),
     2
 )
 
-tab_best_overlay = df.sort_values(
+top_pick_preview = df.sort_values(
+    by="Rating",
+    ascending=False
+).iloc[0]
+
+best_overlay = df.sort_values(
     by="Overlay %",
     ascending=False
 ).iloc[0]
 
-tab_best_execution = df.sort_values(
+best_execution = df.sort_values(
     by="Win Execution",
     ascending=False
 ).iloc[0]
-
-tab_top_pick = df.iloc[0]
-
-tab_value_rows = df[df["Overlay"] == True]
-
-if len(tab_value_rows) > 0:
-    tab_value_pick = tab_value_rows.iloc[0]
-else:
-    tab_value_pick = None
-
 
 overview_tab, ratings_tab, overlays_tab, execution_tab, downloads_tab = st.tabs(
     [
@@ -620,7 +612,6 @@ overview_tab, ratings_tab, overlays_tab, execution_tab, downloads_tab = st.tabs(
     ]
 )
 
-
 with overview_tab:
 
     st.subheader("Overview 🏠")
@@ -628,47 +619,30 @@ with overview_tab:
     overview_col1, overview_col2, overview_col3, overview_col4 = st.columns(4)
 
     with overview_col1:
-        st.metric(
-            "Top Pick",
-            tab_top_pick["Horse"]
-        )
+        st.metric("Top Pick", top_pick_preview["Horse"])
 
     with overview_col2:
-        st.metric(
-            "Top Rating",
-            tab_top_pick["Rating"]
-        )
+        st.metric("Top Rating", top_pick_preview["Rating"])
 
     with overview_col3:
-        st.metric(
-            "Market %",
-            f"{tab_market_percentage}%"
-        )
+        st.metric("Market %", f"{market_percentage}%")
 
     with overview_col4:
-        st.metric(
-            "Overlay Count",
-            tab_overlay_count
-        )
+        st.metric("Overlay Count", overlay_count)
 
     st.write("### Quick Race Read")
 
-    if tab_top_pick["Confidence"] >= 9 and tab_top_pick["Win Execution"] >= 8:
+    if top_pick_preview["Confidence"] >= 9 and top_pick_preview["Win Execution"] >= 8:
+        st.success("Strong race profile ✅ The top pick has both a strong rating and strong win execution.")
 
-        st.success("Strong race profile ✅ The top pick has both a strong rating and a strong win-execution score.")
-
-    elif tab_overlay_count >= 2:
-
+    elif overlay_count >= 2:
         st.info("This race has multiple overlay chances 💰 The market may have missed something.")
 
-    elif tab_market_percentage >= 120:
-
+    elif market_percentage >= 120:
         st.warning("High market percentage ⚠️ Be careful forcing a bet in a high-overround market.")
 
     else:
-
         st.info("Moderate race profile. Treat this as a watch race unless price is attractive.")
-
 
 with ratings_tab:
 
@@ -696,7 +670,10 @@ with ratings_tab:
         ascending=False
     )
 
-    st.dataframe(ratings_view)
+    st.dataframe(
+        ratings_view,
+        use_container_width=True
+    )
 
     st.write("### Top 4 Rated")
 
@@ -712,17 +689,12 @@ with ratings_tab:
 
             with col:
 
-                st.metric(
-                    f"#{i + 1}",
-                    runner["Horse"]
-                )
-
+                st.metric(f"#{i + 1}", runner["Horse"])
                 st.write(f"Rating: {runner['Rating']}")
                 st.write(f"Confidence: {runner['Confidence']}/10")
                 st.write(f"Win Execution: {runner['Win Execution']}/10")
                 st.write(f"Call: {runner['Bet Call']}")
                 st.write(runner["Model Notes"])
-
 
 with overlays_tab:
 
@@ -733,6 +705,19 @@ with overlays_tab:
         ascending=False
     )
 
+    overlay_columns = [
+        "Horse",
+        "Rating",
+        "Fair Odds",
+        "Market Odds",
+        "Odds Source",
+        "Overlay %",
+        "Confidence",
+        "Win Execution",
+        "Bet Call",
+        "Model Notes"
+    ]
+
     if overlay_df.empty:
 
         st.warning("No overlays found in this race.")
@@ -742,63 +727,52 @@ with overlays_tab:
         st.success(f"{len(overlay_df)} overlay runner(s) found ✅")
 
         st.dataframe(
-            overlay_df[
-                [
-    "Horse",
-    "Rating",
-    "Fair Odds",
-    "Market Odds",
-    "Overlay %",
-    "Confidence",
-    "Win Execution",
-    "Bet Call",
-    "Model Notes"
-]
-            ]
+            safe_view(
+                overlay_df,
+                overlay_columns
+            ),
+            use_container_width=True
         )
 
-        st.metric(
-            "Best Overlay",
-            tab_best_overlay["Horse"]
-        )
-
-        st.write(
-            f"Best Overlay Price Gap: {tab_best_overlay['Overlay %']}%"
-        )
-
+        st.metric("Best Overlay", best_overlay["Horse"])
+        st.write(f"Best Overlay Price Gap: {best_overlay['Overlay %']}%")
 
 with execution_tab:
 
     st.subheader("Win Execution 🧠")
 
-    execution_view = df[
-        [
-    "Horse",
-    "Rating",
-    "Confidence",
-    "Win Execution",
-    "Fair Odds",
-    "Market Odds",
-    "Overlay"
-]
-    ].sort_values(
+    execution_columns = [
+        "Horse",
+        "Rating",
+        "Confidence",
+        "Win Execution",
+        "Fair Odds",
+        "Market Odds",
+        "Overlay",
+        "Bet Call",
+        "Model Notes"
+    ]
+
+    execution_view = safe_view(
+        df,
+        execution_columns
+    ).sort_values(
         by="Win Execution",
         ascending=False
     )
 
-    st.dataframe(execution_view)
-
-    st.metric(
-        "Best Win Execution",
-        tab_best_execution["Horse"]
+    st.dataframe(
+        execution_view,
+        use_container_width=True
     )
+
+    st.metric("Best Win Execution", best_execution["Horse"])
 
     st.write(
         "Win Execution estimates how cleanly a runner can actually win. "
         "This early version uses market confidence, barrier/gate risk, weight carried, "
         "and overlay status where available."
     )
-
 
 with downloads_tab:
 
@@ -830,7 +804,6 @@ with downloads_tab:
         conn.close()
 
         st.success("Current analysed race saved to database ✅")
-
 # -----------------------------
 # MODEL SETTINGS DISPLAY
 # -----------------------------

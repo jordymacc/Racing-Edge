@@ -5,7 +5,11 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
-
+from csv_tools import (
+    create_race_template,
+    validate_uploaded_csv,
+    create_column_summary
+)
 from ratings_engine import (
     analyse_race,
     clean_number_column,
@@ -326,7 +330,67 @@ else:
 # PAGE HEADER
 # -----------------------------
 st.header(race)
+# -----------------------------
+# VERSION 2 CSV TEMPLATE + VALIDATOR
+# -----------------------------
+with st.expander("Version 2 CSV Template + Upload Validator 📄"):
 
+    st.write(
+        "Download the clean race template, or inspect the uploaded CSV to see "
+        "which columns are found, missing, or extra."
+    )
+
+    template_df = create_race_template()
+
+    template_csv = template_df.to_csv(index=False)
+
+    st.download_button(
+        label="Download Version 2 Race Template CSV",
+        data=template_csv,
+        file_name="race_template_v2.csv",
+        mime="text/csv",
+        key="download_v2_race_template"
+    )
+
+    if uploaded_file is not None:
+
+        st.write("### Uploaded CSV Column Validation")
+
+        validation = validate_uploaded_csv(df)
+
+        st.dataframe(
+            validation["validation_table"],
+            use_container_width=True
+        )
+
+        if len(validation["missing_columns"]) > 0:
+
+            st.warning(
+                f"Missing template columns: {validation['missing_columns']}"
+            )
+
+        else:
+
+            st.success("Uploaded CSV matches the Version 2 template ✅")
+
+        if len(validation["extra_columns"]) > 0:
+
+            st.info(
+                f"Extra columns found: {validation['extra_columns']}"
+            )
+
+        st.write("### Uploaded CSV Column Summary")
+
+        column_summary = create_column_summary(df)
+
+        st.dataframe(
+            column_summary,
+            use_container_width=True
+        )
+
+    else:
+
+        st.info("Upload a CSV to see column validation.")
 
 # -----------------------------
 # COLUMN MAPPING

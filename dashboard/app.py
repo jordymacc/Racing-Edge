@@ -26,19 +26,20 @@ def ensure_app_columns(dataframe):
     safe_df = dataframe.copy()
 
     default_values = {
-    "Horse": "",
-    "Rating": 0,
-    "Confidence": 0,
-    "Win Execution": 0,
-    "Fair Odds": 0,
-    "Market Odds": 0,
-    "Overlay": False,
-    "Overlay %": 0,
-    "Bet Call": "NO BET ❌",
-    "Model Notes": "No model notes available",
-    "V2 Adjustment": 0,
-    "Race Context": ""
-}
+        "Horse": "",
+        "Rating": 0,
+        "Confidence": 0,
+        "Win Execution": 0,
+        "Fair Odds": 0,
+        "Market Odds": 0,
+        "Overlay": False,
+        "Overlay %": 0,
+        "Bet Call": "NO BET ❌",
+        "Model Notes": "No model notes available",
+        "V2 Adjustment": 0,
+        "Race Context": "",
+        "Odds Source": "Uploaded / Database Odds"
+    }
 
     for column, default_value in default_values.items():
 
@@ -47,7 +48,24 @@ def ensure_app_columns(dataframe):
             safe_df[column] = default_value
 
     return safe_df
+# -----------------------------
+# SAFE TABLE VIEW HELPER
+# -----------------------------
+def safe_view(dataframe, columns):
+    """
+    Safely selects columns for dashboard tables.
+    If a column is missing, ensure_app_columns creates it first.
+    """
 
+    safe_df = ensure_app_columns(dataframe)
+
+    for column in columns:
+
+        if column not in safe_df.columns:
+
+            safe_df[column] = ""
+
+    return safe_df[columns]
 # -----------------------------
 # PAGE SETUP
 # -----------------------------
@@ -423,6 +441,67 @@ if df.empty:
 
     st.stop()
 
+
+# -----------------------------
+# VERSION 2 MANUAL LIVE ODDS UPDATER
+# -----------------------------
+with st.expander("Version 2 Manual Live Odds Updater 🔴"):
+
+    st.write(
+        "Edit the Market Odds below to reflect the latest prices you are seeing. "
+        "Tick the apply box to push those odds into the model."
+    )
+
+    odds_editor_df = df[
+        [
+            "Horse",
+            "Market Odds"
+        ]
+    ].copy()
+
+    odds_editor_df["Market Odds"] = pd.to_numeric(
+        odds_editor_df["Market Odds"],
+        errors="coerce"
+    ).fillna(0)
+
+    edited_odds_df = st.data_editor(
+        odds_editor_df,
+        hide_index=True,
+        use_container_width=True,
+        num_rows="fixed",
+        key="manual_live_odds_editor"
+    )
+
+    apply_manual_live_odds = st.checkbox(
+        "Apply manual live odds to model",
+        value=False,
+        key="apply_manual_live_odds"
+    )
+
+    if apply_manual_live_odds:
+
+        edited_odds_df["Market Odds"] = pd.to_numeric(
+            edited_odds_df["Market Odds"],
+            errors="coerce"
+        ).fillna(0)
+
+        odds_map = edited_odds_df.set_index("Horse")["Market Odds"].to_dict()
+
+        df["Market Odds"] = df["Horse"].map(
+            odds_map
+        ).fillna(
+            df["Market Odds"]
+        )
+
+        df["Odds Source"] = "Manual Live Odds"
+
+        st.success("Manual live odds applied to the model ✅")
+
+    else:
+
+        df["Odds Source"] = "Uploaded / Database Odds"
+
+
 # Apply Version 2 race context layer
 df = apply_v2_context_adjustments(
     df,
@@ -595,23 +674,28 @@ with ratings_tab:
 
     st.subheader("Race Ratings 🐎")
 
-    ratings_view = df[
-    [
+    ratings_columns = [
         "Horse",
         "Rating",
         "Confidence",
         "Win Execution",
         "Fair Odds",
         "Market Odds",
+        "Odds Source",
         "Overlay",
         "Overlay %",
         "Bet Call",
         "Model Notes"
     ]
-].sort_values(
-    by="Rating",
-    ascending=False
-)
+
+    ratings_view = safe_view(
+        df,
+        ratings_columns
+    ).sort_values(
+        by="Rating",
+        ascending=False
+    )
+
     st.dataframe(ratings_view)
 
     st.write("### Top 4 Rated")
@@ -636,6 +720,8 @@ with ratings_tab:
                 st.write(f"Rating: {runner['Rating']}")
                 st.write(f"Confidence: {runner['Confidence']}/10")
                 st.write(f"Win Execution: {runner['Win Execution']}/10")
+                st.write(f"Call: {runner['Bet Call']}")
+                st.write(runner["Model Notes"])
 
 
 with overlays_tab:

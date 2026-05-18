@@ -638,3 +638,132 @@ def apply_v2_context_adjustments(df, race_context):
     )
 
     return df
+# -----------------------------
+# VERSION 2.3 MODEL INPUT SCORING
+# -----------------------------
+def score_text_factor(value):
+    """
+    Converts simple text ratings into numeric scores.
+    """
+
+    value = str(value).lower().strip()
+
+    if value in ["excellent", "elite", "very strong", "strong", "yes"]:
+        return 10
+
+    if value in ["good", "positive", "suited"]:
+        return 8
+
+    if value in ["fair", "neutral", "average", "ok"]:
+        return 5
+
+    if value in ["poor", "negative", "unsuited", "no"]:
+        return 2
+
+    return 5
+
+
+def score_map_position(value):
+    """
+    Scores map position.
+    """
+
+    value = str(value).lower().strip()
+
+    if value in ["lead", "leader", "on speed", "on-speed", "box seat"]:
+        return 9
+
+    if value in ["handy", "forward", "stalk", "stalking"]:
+        return 8
+
+    if value in ["midfield", "cover"]:
+        return 6
+
+    if value in ["back", "rear", "wide", "wide no cover"]:
+        return 3
+
+    return 5
+
+
+def apply_v23_template_scoring(df):
+    """
+    Adds Version 2.3 scoring from clean template fields:
+    - Map Position
+    - Recent Form
+    - Track Suitability
+    - Distance Suitability
+    """
+
+    df = df.copy()
+
+    if "Map Position" in df.columns:
+        df["Map Score"] = df["Map Position"].apply(score_map_position)
+    else:
+        df["Map Score"] = 5
+
+    if "Recent Form" in df.columns:
+        df["Recent Form Score"] = df["Recent Form"].apply(score_text_factor)
+    else:
+        df["Recent Form Score"] = 5
+
+    if "Track Suitability" in df.columns:
+        df["Track Suitability Score"] = df["Track Suitability"].apply(score_text_factor)
+    else:
+        df["Track Suitability Score"] = 5
+
+    if "Distance Suitability" in df.columns:
+        df["Distance Suitability Score"] = df["Distance Suitability"].apply(score_text_factor)
+    else:
+        df["Distance Suitability Score"] = 5
+
+    df["V2.3 Template Score"] = round(
+        (
+            (df["Map Score"] * 0.30) +
+            (df["Recent Form Score"] * 0.30) +
+            (df["Track Suitability Score"] * 0.20) +
+            (df["Distance Suitability Score"] * 0.20)
+        ),
+        1
+    )
+
+    df["Rating"] = (
+        df["Rating"] + ((df["V2.3 Template Score"] - 5) * 1.5)
+    ).clip(
+        lower=40,
+        upper=95
+    ).round(1)
+
+    df["Confidence"] = round(
+        df["Rating"] / 10,
+        1
+    )
+
+    df["Fair Odds"] = round(
+        100 / df["Rating"],
+        2
+    )
+
+    df["Overlay"] = df["Fair Odds"] < df["Market Odds"]
+
+    df["Overlay %"] = round(
+        ((df["Market Odds"] - df["Fair Odds"]) / df["Fair Odds"]) * 100,
+        1
+    )
+
+    df["Model Notes"] = (
+        df["Model Notes"]
+        + " + V2.3 template score applied: "
+        + df["V2.3 Template Score"].astype(str)
+    )
+
+    df["Bet Call"] = df.apply(
+        create_bet_call,
+        axis=1
+    )
+
+    df = df.sort_values(
+        by="Rating",
+        ascending=False
+    )
+
+    return df

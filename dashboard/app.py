@@ -15,18 +15,13 @@ from ratings_engine import (
     clean_number_column,
     create_basic_rating,
     calculate_fair_odds,
-    apply_v2_context_adjustments
+    apply_v2_context_adjustments,
+    apply_v23_template_scoring
 )
 # -----------------------------
 # SAFE APP COLUMN HELPER
 # -----------------------------
 def ensure_app_columns(dataframe):
-    """
-    Makes sure the dashboard columns exist before the app displays tables.
-    This prevents KeyError crashes on Streamlit Cloud when older data
-    does not have newer columns like Bet Call or Model Notes.
-    """
-
     safe_df = dataframe.copy()
 
     default_values = {
@@ -42,7 +37,12 @@ def ensure_app_columns(dataframe):
         "Model Notes": "No model notes available",
         "V2 Adjustment": 0,
         "Race Context": "",
-        "Odds Source": "Uploaded / Database Odds"
+        "Odds Source": "Uploaded / Database Odds",
+        "Map Score": 5,
+        "Recent Form Score": 5,
+        "Track Suitability Score": 5,
+        "Distance Suitability Score": 5,
+        "V2.3 Template Score": 5,
     }
 
     for column, default_value in default_values.items():
@@ -572,6 +572,9 @@ df = apply_v2_context_adjustments(
     race_context
 )
 
+# Apply Version 2.3 clean-template scoring
+df = apply_v23_template_scoring(df)
+
 # Make sure all dashboard display columns exist
 df = ensure_app_columns(df)
 
@@ -635,6 +638,39 @@ styled_df = df.style.apply(
 )
 
 st.dataframe(styled_df)
+# -----------------------------
+# VERSION 2.3 MODEL BREAKDOWN
+# -----------------------------
+with st.expander("Version 2.3 Template Scoring Breakdown 🧠"):
+
+    st.write(
+        "This shows how the uploaded clean-template fields are influencing the model."
+    )
+
+    v23_columns = [
+        "Horse",
+        "Rating",
+        "V2.3 Template Score",
+        "Map Score",
+        "Recent Form Score",
+        "Track Suitability Score",
+        "Distance Suitability Score",
+        "Fair Odds",
+        "Market Odds",
+        "Overlay",
+        "Bet Call"
+    ]
+
+    st.dataframe(
+        safe_view(
+            df,
+            v23_columns
+        ).sort_values(
+            by="V2.3 Template Score",
+            ascending=False
+        ),
+        use_container_width=True
+    )
 # -----------------------------
 # CLEAN TABBED DASHBOARD
 # -----------------------------

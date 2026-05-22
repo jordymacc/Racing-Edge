@@ -97,9 +97,6 @@ try:
         st.info("⏳ No strong signals detected yet. Collecting more data...")
         st.caption("Signals require at least 5 minutes of odds movement data.")
 
-except Exception as e:
-    st.warning(f"⚠️ Betting signals unavailable: {e}")
-    st.caption("Make sure the scraper is running to collect live odds data.")
 
 st.divider()
 
@@ -197,12 +194,12 @@ try:
     
     else:
         st.info("⏳ ML predictions loading... (need recent odds data)")
-
 except Exception as e:
-    st.error(f"⚠️ ML predictions unavailable: {e}")
+    st.error(f"ML Prediction Error: {e}")
     import traceback
     st.code(traceback.format_exc())
-    st.caption("Debug: Check if model exists and paths are correct")
+
+
 
 st.divider()
 # -----------------------------

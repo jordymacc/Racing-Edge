@@ -51,7 +51,6 @@ st.subheader("🎯 Live Betting Signals")
 st_autorefresh(interval=30000, key="signals_refresh")
 
     
-    else:
         st.info("⏳ No strong signals detected yet. Collecting more data...")
         st.caption("Signals require at least 5 minutes of odds movement data.")
 
@@ -115,7 +114,6 @@ try:
                 st.success(f"**{pick['race_name']}** — {pick['horse_name']}")
             elif conf == 'MEDIUM':
                 st.warning(f"**{pick['race_name']}** — {pick['horse_name']}")
-            else:
                 st.info(f"**{pick['race_name']}** — {pick['horse_name']}")
             col1, col2, col3, col4 = st.columns(4)
             with col1:
@@ -130,7 +128,6 @@ try:
                 st.metric("🎲 Confidence", f"{emoji} {conf}")
             st.divider()
         st.caption("🤖 Powered by Ensemble ML Model v4 | Track + Weather features")
-    else:
         st.info("⏳ ML predictions loading... (need recent odds data)")
 except Exception as e:
     st.error(f"ML Error: {e}")

@@ -87,7 +87,8 @@ def get_weather(venue_name):
 def get_todays_meetings():
     """Pull all meeting codes for today from racing.com"""
     print("  🔍 Fetching meetings...")
-    today = datetime.now().strftime("%Y-%m-%d")
+    from zoneinfo import ZoneInfo
+today = datetime.now(ZoneInfo("Australia/Melbourne")).strftime("%Y-%m-%d")
 
     url = (
         "https://graphql.rmdprod.racing.com/?query=query%20getRaceMeetingsByState"

@@ -62,7 +62,7 @@ try:
     races_df = pd.read_sql_query(f"""
         SELECT DISTINCT race_name
         FROM odds_snapshots
-        WHERE timestamp > NOW() - INTERVAL '3 hours'
+        WHERE timestamp::timestamp > NOW() - INTERVAL '3 hours'
         ORDER BY race_name
     """ if DATABASE_URL else """
         SELECT DISTINCT race_name

@@ -161,8 +161,16 @@ try:
         # Top picks across all races
         st.subheader("🏆 Top ML Picks")
         
-        if 'win_probability' not in predictions.columns and 'predicted_prob' in predictions.columns:
-            predictions['win_probability'] = predictions['predicted_prob']
+        if 'win_probability' not in predictions.columns:
+
+            if 'predicted_prob' in predictions.columns:
+                predictions['win_probability'] = predictions['predicted_prob']
+
+            elif 'probability' in predictions.columns:
+                predictions['win_probability'] = predictions['probability']
+
+            else:
+                predictions['win_probability'] = 0.0
 
         top_picks = predictions.nlargest(5, 'win_probability')
         

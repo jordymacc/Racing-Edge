@@ -1,11 +1,18 @@
 import os
-import sqlite3
-from datetime import datetime
-
-import pandas as pd
 import streamlit as st
+import pandas as pd
+import sqlite3
+from pathlib import Path
+from datetime import datetime, timedelta
 from streamlit_autorefresh import st_autorefresh
 
+# Define BASE_DIR first (before we use it)
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Now we can use BASE_DIR in imports
+import sys
+sys.path.insert(0, str(BASE_DIR / 'models'))
+
 from ratings_engine import (
     analyse_race,
     clean_number_column,
@@ -15,15 +22,81 @@ from ratings_engine import (
     apply_v23_template_scoring,
     apply_manual_speed_map,
 )
-from ratings_engine import (
-    analyse_race,
-    clean_number_column,
-    create_basic_rating,
-    calculate_fair_odds,
-    apply_v2_context_adjustments,
-    apply_v23_template_scoring,
-    apply_manual_speed_map,
+
+from csv_tools import (
+    create_race_template,
+    validate_uploaded_csv,
+    create_column_summary,
 )
+
+from rule_engine import get_betting_signals
+
+# Load live odds
+odds_df = pd.read_csv(BASE_DIR / "live_odds.csv")
+# ═══════════════════════════════════════════════════════════
+# 🎯 LIVE BETTING SIGNALS SECTION
+# ═══════════════════════════════════════════════════════════
+
+st.title("🐎 JordyMac Racing Engine")
+st.subheader("🎯 Live Betting Signals")
+
+# Auto-refresh every 30 seconds
+st_autorefresh(interval=30000, key="signals_refresh")
+
+try:
+    signals = get_betting_signals()
+    
+    if signals:
+        st.success(f"✅ {len(signals)} active signals detected")
+        
+        for sig in signals:
+            # Create colored boxes based on signal type
+            if sig['confidence'] == "HIGH":
+                with st.container():
+                    st.markdown(f"### 🔥 {sig['signal']}")
+                    st.success(f"**{sig['race']}**")
+            elif sig['confidence'] == "AVOID":
+                with st.container():
+                    st.markdown(f"### 🚨 {sig['signal']}")
+                    st.error(f"**{sig['race']}**")
+            else:
+                with st.container():
+                    st.markdown(f"### ⚡ {sig['signal']}")
+                    st.warning(f"**{sig['race']}**")
+            
+            # Display signal details in columns
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("🐴 Horse", sig['horse'])
+            with col2:
+                st.metric("💰 Current Odds", f"${sig['current_odds']:.2f}")
+            with col3:
+                st.metric("📊 Movement", sig['movement'], delta=sig['movement'])
+            with col4:
+                st.metric("🎲 Bet Type", sig['bet_type'])
+            
+            # Confidence badge
+            if sig['confidence'] == "HIGH":
+                st.markdown("**Confidence:** 🟢 HIGH")
+            elif sig['confidence'] == "MEDIUM":
+                st.markdown("**Confidence:** 🟡 MEDIUM")
+            else:
+                st.markdown("**Confidence:** 🔴 AVOID")
+            
+            st.divider()
+    
+    else:
+        st.info("⏳ No strong signals detected yet. Collecting more data...")
+        st.caption("Signals require at least 5 minutes of odds movement data.")
+
+except Exception as e:
+    st.warning(f"⚠️ Betting signals unavailable: {e}")
+    st.caption("Make sure the scraper is running to collect live odds data.")
+
+st.divider()
+
+# Continue with your existing dashboard code below...
 # -----------------------------
 # SAFE APP COLUMN HELPER
 # -----------------------------
@@ -54,12 +127,74 @@ def ensure_app_columns(dataframe):
     }
 
     for column, default_value in default_values.items():
-
         if column not in safe_df.columns:
-
             safe_df[column] = default_value
 
     return safe_df
+
+# ═══════════════════════════════════════════════════════════
+# 🤖 ML PREDICTIONS SECTION
+# ═══════════════════════════════════════════════════════════
+
+st.header("🤖 Machine Learning Predictions")
+
+try:
+    # Ensure models folder is in path
+    import sys
+    from pathlib import Path
+    
+    models_path = str(Path(__file__).resolve().parent.parent / 'models')
+    if models_path not in sys.path:
+        sys.path.insert(0, models_path)
+    
+    import dashboard_predictions
+    
+    # Get predictions
+    predictions = dashboard_predictions.get_ml_predictions_for_dashboard()
+    
+    if predictions is not None and len(predictions) > 0:
+        
+        # Top picks across all races
+        st.subheader("🏆 Top ML Picks")
+        
+        top_picks = predictions.nlargest(5, 'win_probability')
+        
+        for idx, pick in top_picks.iterrows():
+            # Color based on confidence
+            if pick['confidence'] == 'HIGH':
+                st.success(f"**{pick['race_name']}** — {pick['horse_name']}")
+            elif pick['confidence'] == 'MEDIUM':
+                st.warning(f"**{pick['race_name']}** — {pick['horse_name']}")
+            else:
+                st.info(f"**{pick['race_name']}** — {pick['horse_name']}")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("💰 Odds", f"${pick['current_odds']:.1f}")
+            with col2:
+                st.metric("🎯 Win Probability", f"{pick['win_probability']*100:.1f}%")
+            with col3:
+                fav_label = "✅ Fav" if pick['is_favorite'] == 1 else "❌"
+                st.metric("📊 Market", fav_label)
+            with col4:
+                confidence_emoji = "🔥" if pick['confidence'] == 'HIGH' else "⚡" if pick['confidence'] == 'MEDIUM' else "💡"
+                st.metric("🎲 Confidence", f"{confidence_emoji} {pick['confidence']}")
+            
+            st.divider()
+        
+        st.caption("🤖 Powered by Gradient Boosting ML Model | Updates every 30 seconds")
+    
+    else:
+        st.info("⏳ ML predictions loading... (need recent odds data)")
+
+except Exception as e:
+    st.error(f"⚠️ ML predictions unavailable: {e}")
+    import traceback
+    st.code(traceback.format_exc())
+    st.caption("Debug: Check if model exists and paths are correct")
+
+st.divider()
 # -----------------------------
 # SAFE TABLE VIEW HELPER
 # -----------------------------
@@ -68,16 +203,326 @@ def safe_view(dataframe, columns):
     Safely selects columns for dashboard tables.
     If a column is missing, ensure_app_columns creates it first.
     """
-
     safe_df = ensure_app_columns(dataframe)
 
     for column in columns:
-
         if column not in safe_df.columns:
-
             safe_df[column] = ""
 
     return safe_df[columns]
+
+
+# -----------------------------
+# VERSION 2.6 MARKET MOVEMENT DETECTION (STEAM/DRIFT)
+# -----------------------------
+def apply_market_movement(df):
+    working_df = df.copy()
+
+    if "Previous Odds" not in working_df.columns:
+        working_df["Previous Odds"] = working_df["Market Odds"]
+
+    if "Current Odds" not in working_df.columns:
+        working_df["Current Odds"] = working_df["Market Odds"]
+
+    working_df["Previous Odds"] = pd.to_numeric(
+        working_df["Previous Odds"], errors="coerce"
+    ).fillna(0)
+
+    working_df["Current Odds"] = pd.to_numeric(
+        working_df["Current Odds"], errors="coerce"
+    ).fillna(0)
+
+    working_df["Odds Change"] = working_df["Current Odds"] - working_df["Previous Odds"]
+
+    working_df["Odds Change %"] = working_df.apply(
+        lambda row: round(
+            ((row["Current Odds"] - row["Previous Odds"]) / row["Previous Odds"]) * 100,
+            2
+        )
+        if row["Previous Odds"] > 0 else 0,
+        axis=1
+    )
+
+    def classify_move(row):
+        if row["Current Odds"] < row["Previous Odds"]:
+            return "Steamer"
+        elif row["Current Odds"] > row["Previous Odds"]:
+            return "Drifter"
+        return "No Change"
+
+    working_df["Market Move"] = working_df.apply(classify_move, axis=1)
+
+    def steam_signal(row):
+        if row["Market Move"] == "Steamer" and row["Odds Change %"] <= -15:
+            return "🔥 Strong Steam"
+        elif row["Market Move"] == "Steamer" and row["Odds Change %"] <= -8:
+            return "⚡ Light Steam"
+        elif row["Market Move"] == "Drifter" and row["Odds Change %"] >= 15:
+            return "❄️ Strong Drift"
+        elif row["Market Move"] == "Drifter" and row["Odds Change %"] >= 8:
+            return "🌫️ Light Drift"
+        return "—"
+
+    working_df["Steam Signal"] = working_df.apply(steam_signal, axis=1)
+
+    return working_df
+
+
+    if df is None or df.empty:
+        return
+
+    conn = sqlite3.connect("database/racing.db")
+    ensure_market_snapshots_table(conn)
+
+    snapshot_ts = datetime.now().isoformat()
+
+    rows = []
+    for _, row in df.iterrows():
+        rows.append(
+            (
+                snapshot_ts,
+                race_name,
+                str(row.get("Horse", "")),
+                float(row.get("Market Odds", 0)) if pd.notna(row.get("Market Odds", 0)) else 0,
+                float(row.get("Fair Odds", 0)) if pd.notna(row.get("Fair Odds", 0)) else 0,
+                int(bool(row.get("Overlay", False))),
+                float(row.get("Confidence", 0)) if pd.notna(row.get("Confidence", 0)) else 0,
+                str(row.get("Odds Source", "")),
+            )
+        )
+
+    conn.executemany(
+        """
+        INSERT INTO market_snapshots(
+            snapshot_ts, race, horse, market_odds, fair_odds, overlay, confidence, odds_source
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        rows
+    )
+    conn.commit()
+    conn.close()
+def detect_false_favourites(df):
+    working_df = df.copy()
+
+    working_df["Market Odds"] = pd.to_numeric(
+        working_df["Market Odds"], errors="coerce"
+    ).fillna(999)
+
+    false_favs = working_df[
+        (working_df["Market Odds"] <= 4.0) &
+        (working_df["Overlay"] == False) &
+        (working_df["Confidence"] <= 6)
+    ].copy()
+
+    false_favs["False Favourite Flag"] = "⚠️ False Favourite"
+    return false_favs
+# -----------------------------
+# VERSION 2.7 SNAPSHOT STORAGE
+# -----------------------------
+def ensure_market_snapshots_table(conn):
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS market_snapshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            snapshot_ts TEXT NOT NULL,
+            race TEXT NOT NULL,
+            horse TEXT NOT NULL,
+            market_odds REAL,
+            fair_odds REAL,
+            overlay INTEGER,
+            confidence REAL,
+            odds_source TEXT
+        )
+        """
+    )
+    conn.commit()
+
+
+def load_last_snapshot_previous_odds(df, race_name):
+    if df is None or df.empty:
+        return df
+
+    conn = sqlite3.connect("database/racing.db")
+    ensure_market_snapshots_table(conn)
+
+    query = """
+    WITH ranked AS (
+        SELECT
+            horse,
+            snapshot_ts,
+            market_odds,
+            ROW_NUMBER() OVER (PARTITION BY horse ORDER BY snapshot_ts DESC) AS rn
+        FROM market_snapshots
+        WHERE race = ?
+    )
+    SELECT horse, snapshot_ts, market_odds
+    FROM ranked
+    WHERE rn = 1
+    """
+
+    snap_df = pd.read_sql(query, conn, params=(race_name,))
+    conn.close()
+
+    if snap_df.empty:
+        return df
+
+    odds_map = dict(zip(snap_df["horse"], snap_df["market_odds"]))
+    ts_map = dict(zip(snap_df["horse"], snap_df["snapshot_ts"]))
+
+    if "Previous Odds" not in df.columns:
+        df["Previous Odds"] = df["Market Odds"]
+
+    df["Previous Odds"] = df["Horse"].map(odds_map).fillna(df["Previous Odds"])
+    df["Previous Odds Timestamp"] = df["Horse"].map(ts_map)
+
+    prev_ts = pd.to_datetime(df["Previous Odds Timestamp"], errors="coerce")
+    df["Minutes Since Last Snapshot"] = (
+        (pd.Timestamp.now() - prev_ts).dt.total_seconds() / 60
+    )
+
+    return df
+
+
+def save_market_snapshots(df, race_name):
+    if df is None or df.empty:
+        return
+
+    conn = sqlite3.connect("database/racing.db")
+    ensure_market_snapshots_table(conn)
+
+    snapshot_ts = datetime.now().isoformat()
+
+    rows = []
+    for _, row in df.iterrows():
+        rows.append(
+            (
+                snapshot_ts,
+                race_name,
+                str(row.get("Horse", "")),
+                float(row.get("Market Odds", 0)) if pd.notna(row.get("Market Odds", 0)) else 0,
+                float(row.get("Fair Odds", 0)) if pd.notna(row.get("Fair Odds", 0)) else 0,
+                int(bool(row.get("Overlay", False))),
+                float(row.get("Confidence", 0)) if pd.notna(row.get("Confidence", 0)) else 0,
+                str(row.get("Odds Source", "")),
+            )
+        )
+
+    conn.executemany(
+        """
+        INSERT INTO market_snapshots(
+            snapshot_ts, race, horse, market_odds, fair_odds, overlay, confidence, odds_source
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        rows
+    )
+    conn.commit()
+    conn.close()
+def load_odds_map_from_snapshots(race_name, minutes_ago):
+    conn = sqlite3.connect("database/racing.db")
+    cutoff_ts = (datetime.now() - timedelta(minutes=minutes_ago)).isoformat()
+
+    query = """
+    WITH ranked AS (
+        SELECT
+            horse,
+            market_odds,
+            snapshot_ts,
+            ROW_NUMBER() OVER (PARTITION BY horse ORDER BY snapshot_ts DESC) AS rn
+        FROM market_snapshots
+        WHERE race = ?
+          AND snapshot_ts <= ?
+    )
+    SELECT horse, market_odds
+    FROM ranked
+    WHERE rn = 1
+    """
+
+    snap_df = pd.read_sql(query, conn, params=(race_name, cutoff_ts))
+    conn.close()
+
+    if snap_df.empty:
+        return {}
+
+    return dict(zip(snap_df["horse"], snap_df["market_odds"]))
+
+
+def apply_v28_window_signals(df, race_name):
+    working_df = df.copy()
+
+    # Ensure numeric
+    working_df["Market Odds"] = pd.to_numeric(working_df["Market Odds"], errors="coerce").fillna(0)
+
+    # Make sure Minutes Since Last Snapshot exists (for Late Plunge)
+    if "Minutes Since Last Snapshot" not in working_df.columns:
+        working_df["Minutes Since Last Snapshot"] = 999
+
+    # --- 5-minute window (steam) ---
+    odds_5m = load_odds_map_from_snapshots(race_name, 5)
+    working_df["Odds 5m Ago"] = working_df["Horse"].map(odds_5m)
+    working_df["Odds 5m Ago"] = pd.to_numeric(working_df["Odds 5m Ago"], errors="coerce")
+
+    working_df["Odds Change 5m %"] = working_df.apply(
+        lambda r: (
+            ((r["Market Odds"] - r["Odds 5m Ago"]) / r["Odds 5m Ago"]) * 100
+            if pd.notna(r["Odds 5m Ago"]) and r["Odds 5m Ago"] > 0
+            else None
+        ),
+        axis=1
+    )
+
+    def signal_5m(row):
+        pct = row["Odds Change 5m %"]
+        if pct is None:
+            return "—"
+        # Steam = shortening => negative pct
+        if pct <= -15:
+            return "🔥 5-min Strong Steam"
+        if pct <= -8:
+            return "⚡ 5-min Light Steam"
+        return "—"
+
+    working_df["5m Signal"] = working_df.apply(signal_5m, axis=1)
+
+    # --- 10-minute window (drift) ---
+    odds_10m = load_odds_map_from_snapshots(race_name, 10)
+    working_df["Odds 10m Ago"] = working_df["Horse"].map(odds_10m)
+    working_df["Odds 10m Ago"] = pd.to_numeric(working_df["Odds 10m Ago"], errors="coerce")
+
+    working_df["Odds Change 10m %"] = working_df.apply(
+        lambda r: (
+            ((r["Market Odds"] - r["Odds 10m Ago"]) / r["Odds 10m Ago"]) * 100
+            if pd.notna(r["Odds 10m Ago"]) and r["Odds 10m Ago"] > 0
+            else None
+        ),
+        axis=1
+    )
+
+    def signal_10m(row):
+        pct = row["Odds Change 10m %"]
+        if pct is None:
+            return "—"
+        # Drift = drifting longer => positive pct
+        if pct >= 15:
+            return "❄️ 10-min Strong Drift"
+        if pct >= 8:
+            return "🌫️ 10-min Light Drift"
+        return "—"
+
+    working_df["10m Signal"] = working_df.apply(signal_10m, axis=1)
+
+    # --- Late plunge (use V2.6 steam + time since last snapshot) ---
+    def late_plunge(row):
+        mins = row.get("Minutes Since Last Snapshot", 999)
+        if row.get("Steam Signal", "") == "🔥 Strong Steam" and mins <= 5:
+            return "🚨 Late Plunge"
+        return "—"
+
+    working_df["Late Plunge Signal"] = working_df.apply(late_plunge, axis=1)
+
+    return working_df
+
 # -----------------------------
 # PAGE SETUP
 # -----------------------------
@@ -180,7 +625,16 @@ race = st.sidebar.selectbox(
     key="race_selector"
 )
 
-
+with st.sidebar.expander("V2.7 Snapshot Storage 🧾"):
+    v27_save_snapshots = st.checkbox(
+        "Save market snapshots every refresh",
+        value=True
+    )
+with st.sidebar.expander("V2.8 Window Alerts ⏱️"):
+    v28_enable = st.checkbox(
+        "Enable 5-min Steam / 10-min Drift / Late Plunge",
+        value=True
+    )
 # -----------------------------
 # MODEL WEIGHT CONTROLS
 # -----------------------------
@@ -524,17 +978,7 @@ with st.expander("Version 2 Manual Live Odds Updater 🔴"):
         "Tick the apply box to push those odds into the model."
     )
 
-    odds_editor_df = df[
-        [
-            "Horse",
-            "Market Odds"
-        ]
-    ].copy()
-
-    odds_editor_df["Market Odds"] = pd.to_numeric(
-        odds_editor_df["Market Odds"],
-        errors="coerce"
-    ).fillna(0)
+    odds_editor_df = df[["Horse", "Market Odds"]].copy()
 
     edited_odds_df = st.data_editor(
         odds_editor_df,
@@ -557,13 +1001,16 @@ with st.expander("Version 2 Manual Live Odds Updater 🔴"):
             errors="coerce"
         ).fillna(0)
 
+        # store previous odds BEFORE changing
+        df["Previous Odds"] = pd.to_numeric(
+            df["Market Odds"], errors="coerce"
+        ).fillna(0)
+
         odds_map = edited_odds_df.set_index("Horse")["Market Odds"].to_dict()
 
-        df["Market Odds"] = df["Horse"].map(
-            odds_map
-        ).fillna(
-            df["Market Odds"]
-        )
+        # set current odds from the edited mapping
+        df["Current Odds"] = df["Horse"].map(odds_map).fillna(df["Market Odds"])
+        df["Market Odds"] = df["Current Odds"]
 
         df["Odds Source"] = "Manual Live Odds"
 
@@ -571,14 +1018,79 @@ with st.expander("Version 2 Manual Live Odds Updater 🔴"):
 
     else:
 
+        # initialize columns if missing
+        if "Current Odds" not in df.columns:
+            df["Current Odds"] = df["Market Odds"]
+
+        if "Previous Odds" not in df.columns:
+            df["Previous Odds"] = df["Market Odds"]
+
         df["Odds Source"] = "Uploaded / Database Odds"
-
-
+        
 # Apply Version 2 race context layer
 df = apply_v2_context_adjustments(
     df,
     race_context
 )
+
+# V2.7: if NOT using manual odds, pull previous odds from the last saved snapshot
+if not apply_manual_live_odds:
+    df = load_last_snapshot_previous_odds(df, race)
+
+df = apply_market_movement(df)
+
+# V2.8: window signals from saved snapshots
+try:
+    v28_enable
+except NameError:
+    v28_enable = False
+
+if v28_enable:
+    df = apply_v28_window_signals(df, race)
+    with st.expander("V2.8 ⏱️ 5-min Steam / 10-min Drift / Late Plunge"):
+        strong_5 = df[df["5m Signal"].str.contains("Strong", na=False)]
+        drift_10 = df[df["10m Signal"].str.contains("Drift", na=False)]
+        late = df[df["Late Plunge Signal"] != "—"]
+
+        if not strong_5.empty:
+            st.success(f"🔥 {len(strong_5)} strong 5-min steam runners")
+            st.dataframe(
+                safe_view(
+                    strong_5,
+                    ["Horse", "Market Odds", "Odds 5m Ago", "Odds Change 5m %", "5m Signal", "Overlay", "Bet Call"]
+                ),
+                use_container_width=True
+            )
+        else:
+            st.info("No strong 5-min steam right now.")
+
+        if not drift_10.empty:
+            st.warning(f"❄️ {len(drift_10)} 10-min drift runners detected")
+            st.dataframe(
+                safe_view(
+                    drift_10,
+                    ["Horse", "Market Odds", "Odds 10m Ago", "Odds Change 10m %", "10m Signal", "Overlay", "Bet Call"]
+                ),
+                use_container_width=True
+            )
+        else:
+            st.info("No 10-min drift detected right now.")
+
+        if not late.empty:
+            st.error(f"🚨 {len(late)} late plunges detected")
+            st.dataframe(
+                safe_view(
+                    late,
+                    ["Horse", "Market Odds", "Steam Signal", "Minutes Since Last Snapshot", "Late Plunge Signal", "Overlay", "Bet Call"]
+                ),
+                use_container_width=True
+            )
+        else:
+            st.info("No late plunges detected right now.")   
+    
+# V2.7: save current market odds snapshot
+if v27_save_snapshots:
+    save_market_snapshots(df, race)
 # -----------------------------
 # VERSION 2.4 MANUAL SPEED MAP INPUT
 # -----------------------------
@@ -643,6 +1155,43 @@ with st.expander("Version 2.4 Manual Speed Map Input 🐎"):
 
         if "Map Source" not in df.columns:
             df["Map Source"] = "CSV / Default"
+            # -----------------------------
+# VERSION 2.5 TRACK BIAS INPUT
+# -----------------------------
+with st.expander("Version 2.5 Track Bias Engine 🎛️"):
+
+    st.write(
+        "Apply race-day track pattern adjustments."
+    )
+
+    selected_bias = st.selectbox(
+        "Track Bias Profile",
+        [
+            "Neutral",
+            "Leader Bias",
+            "Backmarker Bias",
+            "Wide Lanes",
+            "Inside Rail"
+        ],
+        index=0
+    )
+
+    apply_bias = st.checkbox(
+        "Apply track bias adjustments",
+        value=False,
+        key="apply_track_bias"
+    )
+
+    if apply_bias:
+
+        df = apply_track_bias(
+            df,
+            selected_bias
+        )
+
+        st.success(
+            f"{selected_bias} applied successfully ✅"
+        )
 # Apply Version 2.3 clean-template scoring
 df = apply_v23_template_scoring(df)
 
@@ -709,73 +1258,47 @@ styled_df = df.style.apply(
 )
 
 st.dataframe(styled_df)
-# -----------------------------
-# VERSION 2.3 MODEL BREAKDOWN
-# -----------------------------
-with st.expander("Version 2.3 Template Scoring Breakdown 🧠"):
+with st.expander("Version 2.6 Live Market Steam Detection 📈"):
 
-    st.write(
-        "This shows how the uploaded clean-template fields are influencing the model."
-    )
+    st.write("Tracks market moves (steamers/drifters) and false favourites.")
 
-    v23_columns = [
+    steam_columns = [
         "Horse",
+        "Previous Odds",
+        "Current Odds",
+        "Odds Change",
+        "Odds Change %",
+        "Market Move",
+        "Steam Signal",
         "Rating",
-        "V2.3 Template Score",
-        "Map Position",
-        "Map Source",
-        "Map Score",
-        "Recent Form Score",
-        "Track Suitability Score",
-        "Distance Suitability Score",
         "Fair Odds",
         "Market Odds",
         "Overlay",
+        "Overlay %",
         "Bet Call"
     ]
 
-    v23_view = safe_view(
-        df,
-        v23_columns
-    ).sort_values(
-        by="V2.3 Template Score",
-        ascending=False
+    steam_view = safe_view(df, steam_columns).sort_values(
+        by="Odds Change %",
+        ascending=True
     )
 
-    st.dataframe(
-        v23_view,
-        use_container_width=True
-    )
+    st.dataframe(steam_view, use_container_width=True)
+
+    false_favs_df = detect_false_favourites(df)
+    
+    if not false_favs_df.empty:
+        st.warning("⚠️ False Favourite Alert")
+        st.dataframe(
+            false_favs_df[
+                ["Horse", "Market Odds", "Fair Odds", "Confidence", "Bet Call", "False Favourite Flag"]
+            ],
+            use_container_width=True
+        )
 # -----------------------------
 # CLEAN TABBED DASHBOARD
 # -----------------------------
 st.subheader("Race Dashboard Tabs 🧭")
-
-# Make sure required dashboard columns exist
-df = ensure_app_columns(df)
-
-# Safety calculations
-overlay_count = len(df[df["Overlay"] == True])
-
-market_percentage = round(
-    (100 / pd.to_numeric(df["Market Odds"], errors="coerce").replace(0, pd.NA)).sum(),
-    2
-)
-
-top_pick_preview = df.sort_values(
-    by="Rating",
-    ascending=False
-).iloc[0]
-
-best_overlay = df.sort_values(
-    by="Overlay %",
-    ascending=False
-).iloc[0]
-
-best_execution = df.sort_values(
-    by="Win Execution",
-    ascending=False
-).iloc[0]
 
 overview_tab, ratings_tab, overlays_tab, execution_tab, downloads_tab = st.tabs(
     [
@@ -786,12 +1309,56 @@ overview_tab, ratings_tab, overlays_tab, execution_tab, downloads_tab = st.tabs(
         "Downloads 📥"
     ]
 )
-
 with overview_tab:
 
     st.subheader("Overview 🏠")
 
-    overview_col1, overview_col2, overview_col3, overview_col4 = st.columns(4)
+    overview_col1, overview_col2, overview_col3, overview_col4, overview_col5 = st.columns(5)
+
+    overlay_count = len(df[df["Overlay"] == True])
+
+    market_percentage = round(
+        (
+            100 / pd.to_numeric(
+                df["Market Odds"],
+                errors="coerce"
+            ).replace(0, pd.NA)
+        ).sum(),
+        2
+    )
+
+    top_pick_preview = df.sort_values(
+        by="Rating",
+        ascending=False
+    ).iloc[0]
+
+    leader_count = len(
+        df[
+            df["Map Position"].isin(
+                ["Lead", "On-speed"]
+            )
+        ]
+    )
+
+    backmarker_count = len(
+        df[
+            df["Map Position"].isin(
+                ["Back", "Wide"]
+            )
+        ]
+    )
+
+    if leader_count >= 4:
+
+        race_shape = "High Pressure"
+
+    elif leader_count <= 1:
+
+        race_shape = "Leader Favoured"
+
+    else:
+
+        race_shape = "Balanced Tempo"
 
     with overview_col1:
         st.metric("Top Pick", top_pick_preview["Horse"])
@@ -805,20 +1372,78 @@ with overview_tab:
     with overview_col4:
         st.metric("Overlay Count", overlay_count)
 
+    with overview_col5:
+        st.metric("Race Shape", race_shape)
+
     st.write("### Quick Race Read")
 
     if top_pick_preview["Confidence"] >= 9 and top_pick_preview["Win Execution"] >= 8:
-        st.success("Strong race profile ✅ The top pick has both a strong rating and strong win execution.")
+
+        st.success(
+            "Strong race profile ✅ The top pick has both a strong rating and strong win execution."
+        )
 
     elif overlay_count >= 2:
-        st.info("This race has multiple overlay chances 💰 The market may have missed something.")
+
+        st.info(
+            "This race has multiple overlay chances 💰 The market may have missed something."
+        )
 
     elif market_percentage >= 120:
-        st.warning("High market percentage ⚠️ Be careful forcing a bet in a high-overround market.")
+
+        st.warning(
+            "High market percentage ⚠️ Be careful forcing a bet in a high-overround market."
+        )
 
     else:
-        st.info("Moderate race profile. Treat this as a watch race unless price is attractive.")
 
+        st.info(
+            "Moderate race profile. Treat this as a watch race unless price is attractive."
+        )
+st.write("### Track Bias")
+
+if apply_bias:
+
+    st.info(
+        f"Current Bias Profile: {selected_bias}"
+    )
+
+else:
+
+    st.info(
+        "No track bias currently applied."
+    )
+    st.write("### Map Shape")
+
+    if leader_count >= 4:
+
+        st.error(
+            "🔥 HOT SPEED: Expect pressure on leaders and possible setup for closers."
+        )
+
+    elif leader_count == 3:
+
+        st.warning(
+            "⚠️ Genuine tempo likely."
+        )
+
+    elif leader_count <= 1:
+
+        st.success(
+            "🐎 SOFT LEAD possible — major advantage to on-speed runners."
+        )
+
+    else:
+
+        st.info(
+            "Balanced race tempo profile."
+        )
+
+    if backmarker_count >= 4:
+
+        st.info(
+            "Multiple backmarkers engaged — watch for tempo collapse late."
+        )
 with ratings_tab:
 
     st.subheader("Race Ratings 🐎")
@@ -870,7 +1495,24 @@ with ratings_tab:
                 st.write(f"Win Execution: {runner['Win Execution']}/10")
                 st.write(f"Call: {runner['Bet Call']}")
                 st.write(runner["Model Notes"])
+# -----------------------------
+# OVERLAY SUMMARY VARIABLES
+# -----------------------------
+overlay_df = df[df["Overlay"] == True].copy()
 
+if len(overlay_df) > 0:
+
+    best_overlay = overlay_df.sort_values(
+        by="Overlay %",
+        ascending=False
+    ).iloc[0]
+
+else:
+
+    best_overlay = {
+        "Horse": "No Overlay",
+        "Overlay %": 0
+    }
 with overlays_tab:
 
     st.subheader("Value / Overlays 💰")
@@ -911,7 +1553,23 @@ with overlays_tab:
 
         st.metric("Best Overlay", best_overlay["Horse"])
         st.write(f"Best Overlay Price Gap: {best_overlay['Overlay %']}%")
+# -----------------------------
+# WIN EXECUTION SUMMARY VARIABLE
+# -----------------------------
+execution_df = df.copy()
 
+if len(execution_df) > 0:
+
+    best_execution = execution_df.sort_values(
+        by="Win Execution",
+        ascending=False
+    ).iloc[0]
+
+else:
+
+    best_execution = {
+        "Horse": "No Runner"
+    }
 with execution_tab:
 
     st.subheader("Win Execution 🧠")

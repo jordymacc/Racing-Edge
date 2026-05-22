@@ -1,0 +1,63 @@
+import requests
+import time
+from datetime import datetime
+from pathlib import Path
+import sqlite3
+
+# ── Config ───────────────────────────────────────────────
+DB_PATH = Path(__file__).resolve().parent.parent / "database" / "racing.db"
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0",
+    "Accept": "application/json",
+    "Origin": "https://www.racing.com",
+    "Referer": "https://www.racing.com/",
+    "x-api-key": "da2-6nsi4ztsynar3l3frgxf77q5fe",
+}
+
+# ── Step 1: Get Today's Meetings ─────────────────────────
+def get_todays_meetings():
+    """Pull all meeting codes for today from racing.com"""
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    # Use the exact query racing.com uses
+    url = (
+        "https://graphql.rmdprod.racing.com/?query=query%20getRaceMeetingsByState"
+        "(%24daysForward%3A%20Int!%2C%20%24daysBack%3A%20Int!)%20%7B%0A%20%20"
+        "GetRaceMeetingsByStateNew(%0A%20%20%20%20daysForward%3A%20%24daysForward%0A"
+        "%20%20%20%20daysBack%3A%20%24daysBack%0A%20%20%20%20states%3A%20%22VIC%7C"
+        "SA%7CQLD%7CNSW%7CWA%7CACT%7CNT%7CTAS%22%0A%20%20)%20%7B%0A%20%20%20%20id%0A"
+        "%20%20%20%20racesCount%0A%20%20%20%20date%0A%20%20%20%20venue%0A%20%20%20%20"
+        "state%0A%20%20%7D%0A%7D&operationName=getRaceMeetingsByState"
+        "&variables=%7B%22daysForward%22%3A0%2C%22daysBack%22%3A0%7D"
+    )
+
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+
+        all_meetings = data.get("data", {}).get("GetRaceMeetingsByStateNew", [])
+        
+        # Filter to only today's meetings
+        todays_meetings = [m for m in all_meetings if m.get("date") == today]
+        
+        print(f"✅ Found {len(todays_meetings)} meetings today")
+        
+        # Convert to our expected format
+        meetings = []
+        for m in todays_meetings:
+            meetings.append({
+                "meetCode": m.get("id"),
+                "venue": {"venueName": m.get("venue"), "state": m.get("state")},
+                "racesCount": m.get("racesCount", 8),
+                "meetDate": m.get("date")
+            })
+        
+        return meetings
+
+    except Exception as e:
+        print(f"❌ Failed to get meetings: {e}")
+        import traceback
+        traceback.print_exc()
+        return []

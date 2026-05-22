@@ -796,3 +796,107 @@ def apply_manual_speed_map(df, speed_map_df):
     df["Map Source"] = "Manual Speed Map"
 
     return df
+# -----------------------------
+# VERSION 2.5 TRACK BIAS ENGINE
+# -----------------------------
+def apply_track_bias(df, bias_profile):
+    """
+    Applies race-day track bias adjustments.
+
+    Supported bias profiles:
+    - Leader Bias
+    - Backmarker Bias
+    - Wide Lanes
+    - Inside Rail
+    - Neutral
+    """
+
+    df = df.copy()
+
+    df["Bias Adjustment"] = 0
+
+    if bias_profile == "Leader Bias":
+
+        df.loc[
+            df["Map Position"].isin(
+                ["Lead", "On-speed"]
+            ),
+            "Bias Adjustment"
+        ] += 4
+
+        df.loc[
+            df["Map Position"].isin(
+                ["Back", "Wide"]
+            ),
+            "Bias Adjustment"
+        ] -= 3
+
+    elif bias_profile == "Backmarker Bias":
+
+        df.loc[
+            df["Map Position"].isin(
+                ["Back", "Wide"]
+            ),
+            "Bias Adjustment"
+        ] += 4
+
+        df.loc[
+            df["Map Position"].isin(
+                ["Lead", "On-speed"]
+            ),
+            "Bias Adjustment"
+        ] -= 2
+
+    elif bias_profile == "Wide Lanes":
+
+        df.loc[
+            df["Map Position"].isin(
+                ["Wide"]
+            ),
+            "Bias Adjustment"
+        ] += 3
+
+    elif bias_profile == "Inside Rail":
+
+        df.loc[
+            df["Map Position"].isin(
+                ["Lead", "On-speed", "Handy"]
+            ),
+            "Bias Adjustment"
+        ] += 2
+
+    df["Rating"] = (
+        df["Rating"] + df["Bias Adjustment"]
+    ).clip(
+        lower=40,
+        upper=99
+    )
+
+    df["Confidence"] = round(
+        df["Rating"] / 10,
+        1
+    )
+
+    df["Fair Odds"] = round(
+        100 / df["Rating"],
+        2
+    )
+
+    df["Overlay"] = df["Fair Odds"] < df["Market Odds"]
+
+    df["Overlay %"] = round(
+        (
+            (
+                df["Market Odds"] - df["Fair Odds"]
+            ) / df["Fair Odds"]
+        ) * 100,
+        1
+    )
+
+    df["Model Notes"] = (
+        df["Model Notes"]
+        + " | Track Bias: "
+        + bias_profile
+    )
+
+    return df

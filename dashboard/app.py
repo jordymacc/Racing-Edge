@@ -98,13 +98,45 @@ def ensure_app_columns(dataframe):
 # ═══════════════════════════════════════════════════════════
 
 st.header("🤖 Machine Learning Predictions")
-
-        
-        st.caption("🤖 Powered by Gradient Boosting ML Model | Updates every 30 seconds")
-    
+try:
+    import sys
+    from pathlib import Path
+    models_path = str(Path(__file__).resolve().parent.parent / 'models')
+    if models_path not in sys.path:
+        sys.path.insert(0, models_path)
+    import dashboard_predictions
+    predictions = dashboard_predictions.get_ml_predictions_for_dashboard()
+    if predictions is not None and len(predictions) > 0:
+        st.subheader("🏆 Top ML Picks")
+        top_picks = predictions.nlargest(5, 'predicted_win_prob')
+        for idx, pick in top_picks.iterrows():
+            conf = pick.get('confidence', 'LOW')
+            if conf == 'HIGH':
+                st.success(f"**{pick['race_name']}** — {pick['horse_name']}")
+            elif conf == 'MEDIUM':
+                st.warning(f"**{pick['race_name']}** — {pick['horse_name']}")
+            else:
+                st.info(f"**{pick['race_name']}** — {pick['horse_name']}")
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("💰 Odds", f"${pick['current_odds']:.1f}")
+            with col2:
+                st.metric("🎯 Win Prob", f"{pick['predicted_win_prob']*100:.1f}%")
+            with col3:
+                fav_label = "✅ Fav" if pick['is_favorite'] == 1 else "❌"
+                st.metric("📊 Market", fav_label)
+            with col4:
+                emoji = "🔥" if conf == 'HIGH' else "⚡" if conf == 'MEDIUM' else "💡"
+                st.metric("🎲 Confidence", f"{emoji} {conf}")
+            st.divider()
+        st.caption("🤖 Powered by Ensemble ML Model v4 | Track + Weather features")
     else:
         st.info("⏳ ML predictions loading... (need recent odds data)")
-# -----------------------------
+except Exception as e:
+    st.error(f"ML Error: {e}")
+    import traceback
+    st.code(traceback.format_exc())
+
 # SAFE TABLE VIEW HELPER
 # -----------------------------
 def safe_view(dataframe, columns):

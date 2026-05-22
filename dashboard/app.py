@@ -98,6 +98,10 @@ try:
         st.caption("Signals require at least 5 minutes of odds movement data.")
 
 
+except Exception as e:
+    st.warning(f"⚠️ Betting signals unavailable: {e}")
+    st.caption("Make sure the scraper is running to collect live odds data.")
+
 st.divider()
 
 # Continue with your existing dashboard code below...

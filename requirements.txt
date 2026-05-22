@@ -54,3 +54,4 @@ tabulate
 openpyxl
 xgboost
 plotly
+psycopg2-binary

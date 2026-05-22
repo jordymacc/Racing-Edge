@@ -1,9 +1,17 @@
+import os
 import sqlite3
 import pandas as pd
 import numpy as np
 from pathlib import Path
 
 DB_PATH = Path(__file__).resolve().parent.parent / "database" / "racing.db"
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+def get_conn():
+    if DATABASE_URL:
+        import psycopg2
+        return psycopg2.connect(DATABASE_URL)
+    return __import__("sqlite3").connect(str(DB_PATH))
 
 def get_jockey_win_rate(jockey_name, conn):
     if not jockey_name:
@@ -23,7 +31,7 @@ def get_trainer_win_rate(trainer_name, conn):
 
 def extract_features_for_race(race_name):
     """Extract ML features INCLUDING jockey/trainer/track/weather"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
 
     query = """
         SELECT 

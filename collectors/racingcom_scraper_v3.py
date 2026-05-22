@@ -188,6 +188,17 @@ def parse_odds(data, meet_code, race_number, venue_name, temperature, rainfall):
     return rows
 
 def save_to_db(rows, meet_code):
+    # Try PostgreSQL first, fall back to SQLite
+    try:
+        import sys
+        sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent.parent / 'database'))
+        from db_writer import save_odds
+        save_odds(rows, meet_code)
+        return
+    except Exception as e:
+        print(f"  PG write failed, using SQLite: {e}")
+    # SQLite fallback below
+def save_to_db_sqlite(rows, meet_code):
     """Save to database with track condition + weather"""
     if not rows:
         return

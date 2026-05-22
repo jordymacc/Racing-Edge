@@ -49,16 +49,6 @@ urllib3==2.7.0
 uvicorn==0.47.0
 watchdog==6.0.0
 websockets==16.0
-streamlit
-pandas
-numpy
-requests
-beautifulsoup4
 lxml
-playwright
-selenium
-webdriver-manager
-fake-useragent
 tabulate
 openpyxl
-services:

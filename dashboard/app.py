@@ -10,6 +10,9 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from streamlit_autorefresh import st_autorefresh
 
+# Apply dark neon theme
+inject_css()
+
 # Define BASE_DIR first (before we use it)
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -161,8 +164,8 @@ try:
         # Top picks across all races
         st.subheader("🏆 Top ML Picks")
         
-if 'win_probability' not in predictions.columns and 'predicted_prob' in predictions.columns:
-    predictions['win_probability'] = predictions['predicted_prob']
+        if 'win_probability' not in predictions.columns and 'predicted_prob' in predictions.columns:
+            predictions['win_probability'] = predictions['predicted_prob']
 
         top_picks = predictions.nlargest(5, 'win_probability')
         

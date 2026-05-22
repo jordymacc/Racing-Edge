@@ -4,7 +4,7 @@ from pathlib import Path
 from feature_engine import extract_features_for_race
 import sqlite3
 
-MODEL_PATH = Path(__file__).resolve().parent / "winner_predictor_v2.pkl"
+MODEL_PATH = Path(__file__).resolve().parent / "winner_predictor_v3.pkl"
 DB_PATH = Path(__file__).resolve().parent.parent / "database" / "racing.db"
 
 def get_ml_predictions_for_dashboard():

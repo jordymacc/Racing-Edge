@@ -1,17 +1,14 @@
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from theme import inject_css
-
 import os
+import sys
 import streamlit as st
 import pandas as pd
 import sqlite3
 from pathlib import Path
 from datetime import datetime, timedelta
 from streamlit_autorefresh import st_autorefresh
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from theme import inject_css
 
-# Apply dark neon theme
-inject_css()
 
 # Define BASE_DIR first (before we use it)
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -41,18 +38,6 @@ from rule_engine import get_betting_signals
 # Load live odds
 odds_df = pd.read_csv(BASE_DIR / "live_odds.csv")
 # ═══════════════════════════════════════════════════════════
-# 🎯 LIVE BETTING SIGNALS SECTION
-# ═══════════════════════════════════════════════════════════
-
-st.title("🐎 JordyMac Racing Engine")
-st.subheader("🎯 Live Betting Signals")
-
-# Auto-refresh every 30 seconds
-st_autorefresh(interval=30000, key="signals_refresh")
-
-    
-# Continue with your existing dashboard code below...
-# -----------------------------
 # SAFE APP COLUMN HELPER
 # -----------------------------
 def ensure_app_columns(dataframe):
@@ -460,6 +445,7 @@ def apply_v28_window_signals(df, race_name):
 # PAGE SETUP
 # -----------------------------
 st.title("🐎 JordyMac Racing Engine")
+inject_css()
 
 st.write("Last Updated:", datetime.now())
 

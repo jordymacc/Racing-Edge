@@ -1,3 +1,7 @@
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + "/..")
+from theme import page_header, inject_css
+
 import streamlit as st
 import pandas as pd
 import sqlite3
@@ -9,6 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DB_PATH = BASE_DIR / "database" / "racing.db"
 
 st.set_page_config(page_title="Performance Tracker", page_icon="📊", layout="wide")
+inject_css()
 
 st.title("📊 Model Performance Tracker")
 

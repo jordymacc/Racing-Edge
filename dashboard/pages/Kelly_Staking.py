@@ -1,3 +1,7 @@
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + "/..")
+from theme import page_header, inject_css
+
 import streamlit as st
 import sqlite3
 import pandas as pd
@@ -16,6 +20,7 @@ from kelly_staking import (
 DB_PATH = BASE_DIR / "database" / "racing.db"
 
 st.set_page_config(page_title="Kelly Staking", page_icon="💰", layout="wide")
+inject_css()
 st.title("💰 Kelly Criterion Staking")
 
 setup_kelly_table()

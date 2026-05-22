@@ -1,3 +1,7 @@
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + "/..")
+from theme import page_header, inject_css
+
 # dashboard/pages/Paper_Trading.py
 import streamlit as st
 import pandas as pd
@@ -13,6 +17,7 @@ sys.path.insert(0, str(BASE_DIR / 'models'))
 from staking import calculate_kelly_stake
 
 st.set_page_config(page_title="Paper Trading Simulator", page_icon="📈", layout="wide")
+inject_css()
 st.title("📈 Kelly Criterion Paper Trading")
 st.markdown("Simulate bankroll growth on your **settled AI predictions** using dynamic Kelly staking.")
 

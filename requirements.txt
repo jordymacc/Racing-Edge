@@ -53,3 +53,4 @@ lxml
 tabulate
 openpyxl
 xgboost
+plotly

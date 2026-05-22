@@ -26,7 +26,7 @@ def run_odds_scraper():
     """Scrape live odds"""
     print(f"\n⏰ [{datetime.now().strftime('%H:%M:%S')}] Running odds scraper...")
     try:
-        from racingcom_scraper import scrape_all_races
+        from racingcom_scraper_v3 import scrape_all_races
         scrape_all_races()
     except Exception as e:
         print(f"❌ Odds scraper failed: {e}")

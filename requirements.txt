@@ -52,3 +52,4 @@ websockets==16.0
 lxml
 tabulate
 openpyxl
+xgboost

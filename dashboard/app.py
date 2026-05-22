@@ -51,11 +51,6 @@ st.subheader("🎯 Live Betting Signals")
 st_autorefresh(interval=30000, key="signals_refresh")
 
     
-        st.info("⏳ No strong signals detected yet. Collecting more data...")
-        st.caption("Signals require at least 5 minutes of odds movement data.")
-
-
-
 # Continue with your existing dashboard code below...
 # -----------------------------
 # SAFE APP COLUMN HELPER

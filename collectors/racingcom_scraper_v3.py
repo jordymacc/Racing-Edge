@@ -9,11 +9,19 @@ print("🔧 Script loaded successfully (v3 - Track Conditions + Weather)")
 DB_PATH = Path(__file__).resolve().parent.parent / "database" / "racing.db"
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0",
-    "Accept": "application/json",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-AU,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
     "Origin": "https://www.racing.com",
     "Referer": "https://www.racing.com/",
     "x-api-key": "da2-6nsi4ztsynar3l3frgxf77q5fe",
+    "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"Windows"',
+    "sec-fetch-dest": "empty",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "cross-site",
 }
 
 # Australian venue coordinates for weather lookup

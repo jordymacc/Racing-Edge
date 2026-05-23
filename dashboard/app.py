@@ -1,6 +1,7 @@
 import os
 import sys
 import streamlit as st
+from engines.race_intelligence_engine import run_race_intelligence
 import pandas as pd
 import sqlite3
 from pathlib import Path
@@ -85,6 +86,7 @@ try:
         sys.path.insert(0, models_path)
     import dashboard_predictions
     predictions = dashboard_predictions.get_ml_predictions_for_dashboard()
+predictions = run_race_intelligence(predictions)
     if predictions is not None and len(predictions) > 0:
         st.subheader("🏆 Top ML Picks")
         top_picks = predictions.nlargest(5, 'predicted_win_prob')
@@ -482,3 +484,4 @@ with st.expander("System Health Check 🛠️"):
     )
 
     # Check database tables
+    

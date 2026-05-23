@@ -1,0 +1,149 @@
+CREATE TABLE IF NOT EXISTS "pakenham_r1" (
+"Horse" TEXT,
+  "Rating" INTEGER,
+  "Fair Odds" REAL,
+  "Market Odds" REAL
+);
+CREATE TABLE IF NOT EXISTS "morphettville_r3" (
+"Horse" TEXT,
+  "Rating" INTEGER,
+  "Fair Odds" REAL,
+  "Market Odds" REAL
+);
+CREATE TABLE IF NOT EXISTS "analysed_pakenham_race_1" (
+"Horse" TEXT,
+  "Rating" INTEGER,
+  "Fair Odds" REAL,
+  "Market Odds" REAL,
+  "Overlay" INTEGER,
+  "Confidence" REAL,
+  "Overlay %" REAL
+);
+CREATE TABLE market_snapshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            snapshot_ts TEXT NOT NULL,
+            race TEXT NOT NULL,
+            horse TEXT NOT NULL,
+            market_odds REAL,
+            fair_odds REAL,
+            overlay INTEGER,
+            confidence REAL,
+            odds_source TEXT
+        );
+CREATE TABLE sqlite_sequence(name,seq);
+CREATE TABLE races (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            race_name     TEXT,
+            track         TEXT,
+            race_date     TEXT,
+            jump_time     TEXT,
+            created_at    TEXT DEFAULT (datetime('now'))
+        );
+CREATE TABLE horses (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            race_id       INTEGER,
+            horse_name    TEXT,
+            barrier       INTEGER,
+            jockey        TEXT,
+            trainer       TEXT,
+            weight        REAL,
+            FOREIGN KEY (race_id) REFERENCES races(id)
+        );
+CREATE TABLE odds_snapshots (
+            id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp             TEXT,
+            race_name             TEXT,
+            horse_name            TEXT,
+            win_odds_sportsbet    REAL,
+            win_odds_tab          REAL,
+            win_odds_racingcom    REAL,
+            place_odds_sportsbet  REAL,
+            place_odds_tab        REAL,
+            place_odds_racingcom  REAL,
+            lay_odds              REAL,
+            minutes_to_jump       REAL
+        , meet_code TEXT, jockey_name TEXT, trainer_name TEXT, track_condition TEXT, track_condition_score REAL, temperature REAL, rainfall REAL);
+CREATE TABLE historical_results (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            race_name        TEXT,
+            race_date        TEXT,
+            track            TEXT,
+            horse_name       TEXT,
+            finish_position  INTEGER,
+            winner           INTEGER,  -- 1 = won, 0 = lost
+            placed           INTEGER,  -- 1 = placed, 0 = didnt place
+            win_odds         REAL,
+            place_odds       REAL,
+            lay_odds         REAL
+        );
+CREATE TABLE model_predictions (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp        TEXT,
+            race_name        TEXT,
+            horse_name       TEXT,
+            win_probability  REAL,
+            place_probability REAL,
+            lay_probability  REAL,
+            signal           TEXT,  -- BACK WIN / BACK PLACE / LAY / NO BET
+            confidence       REAL,
+            minutes_to_jump  REAL
+        );
+CREATE TABLE bet_log (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp        TEXT,
+            race_name        TEXT,
+            horse_name       TEXT,
+            bet_type         TEXT,  -- WIN / PLACE / LAY
+            odds             REAL,
+            stake            REAL,
+            result           TEXT,  -- WON / LOST / PENDING
+            profit_loss      REAL
+        );
+CREATE TABLE ml_predictions_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT,
+            race_name TEXT,
+            horse_name TEXT,
+            predicted_win_prob REAL,
+            current_odds REAL,
+            confidence TEXT,
+            actual_result INTEGER,
+            profit_loss REAL,
+            settled INTEGER DEFAULT 0
+        );
+CREATE TABLE jockey_stats (
+    jockey_name TEXT PRIMARY KEY,
+    total_rides INTEGER DEFAULT 0,
+    total_wins INTEGER DEFAULT 0,
+    win_rate REAL,
+    last_updated TEXT
+);
+CREATE TABLE trainer_stats (
+    trainer_name TEXT PRIMARY KEY,
+    total_starters INTEGER DEFAULT 0,
+    total_wins INTEGER DEFAULT 0,
+    win_rate REAL,
+    last_updated TEXT
+);
+CREATE TABLE kelly_bets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT,
+            race_name TEXT,
+            horse_name TEXT,
+            predicted_prob REAL,
+            win_odds REAL,
+            edge REAL,
+            kelly_pct REAL,
+            recommended_bet REAL,
+            bankroll_before REAL,
+            bankroll_after REAL,
+            result TEXT,
+            profit_loss REAL,
+            settled INTEGER DEFAULT 0
+        );
+CREATE TABLE bankroll_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT,
+            bankroll REAL,
+            event TEXT
+        );

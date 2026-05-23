@@ -132,18 +132,30 @@ if horses_df.empty:
 
 # ── Load ML predictions ──
 try:
-    from feature_engine_v3 import extract_features_for_race
     import joblib
+    sys.path.insert(0, str(BASE_DIR / "models"))
+    from dashboard_predictions import fetch_all_data, build_features
     model_path = BASE_DIR / "models" / "winner_predictor_v4.pkl"
     model_data = joblib.load(model_path)
     model = model_data["model"]
-    FEATURES = model_data["features"]
-    race_features = extract_features_for_race(selected_race)
-    if race_features is not None:
-        X = race_features[FEATURES].fillna(0)
-        probs = model.predict_proba(X)[:, 1]
-        race_features["ml_prob"] = probs
-        ml_map = dict(zip(race_features["horse_name"], race_features["ml_prob"]))
+    FEATURES = [
+        "win_odds_racingcom", "implied_prob", "is_favorite", "market_rank",
+        "jockey_win_rate", "trainer_win_rate", "combined_form",
+        "jockey_odds_interaction", "trainer_odds_interaction",
+        "track_condition_score", "is_good", "is_soft", "is_heavy", "is_synth",
+        "temperature", "rainfall", "wet_track", "temp_normalized"
+    ]
+    odds_df, jockey_df, trainer_df = fetch_all_data()
+    race_odds = odds_df[odds_df["race_name"] == selected_race]
+    if not race_odds.empty:
+        race_features = build_features(race_odds, jockey_df, trainer_df)
+        if race_features is not None:
+            X = race_features[FEATURES].fillna(0)
+            probs = model.predict_proba(X)[:, 1]
+            race_features["ml_prob"] = probs
+            ml_map = dict(zip(race_features["horse_name"], race_features["ml_prob"]))
+        else:
+            ml_map = {}
     else:
         ml_map = {}
 except Exception as e:

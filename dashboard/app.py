@@ -86,7 +86,7 @@ try:
         sys.path.insert(0, models_path)
     import dashboard_predictions
     predictions = dashboard_predictions.get_ml_predictions_for_dashboard()
-predictions = run_race_intelligence(predictions)
+    predictions = run_race_intelligence(predictions)
     if predictions is not None and len(predictions) > 0:
         st.subheader("🏆 Top ML Picks")
         top_picks = predictions.nlargest(5, 'predicted_win_prob')

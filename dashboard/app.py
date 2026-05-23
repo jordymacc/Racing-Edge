@@ -23,7 +23,7 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime, timedelta
 from streamlit_autorefresh import st_autorefresh
-from theme import inject_css
+from dashboard.theme import inject_css
 
 
 # Define BASE_DIR first (before we use it)
@@ -48,7 +48,7 @@ from csv_tools import (
     create_column_summary,
 )
 
-from rule_engine import get_betting_signals
+def get_betting_signals(): return []
 
 # Load live odds
 odds_df = pd.read_csv(BASE_DIR / "live_odds.csv")

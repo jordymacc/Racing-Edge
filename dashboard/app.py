@@ -92,6 +92,7 @@ def ensure_app_columns(dataframe):
 # 🤖 ML PREDICTIONS SECTION
 # ═══════════════════════════════════════════════════════════
 
+import dashboard.dashboard_predictions as dashboard_predictions
  st.header("🤖 Machine Learning Predictions")
  
  try:

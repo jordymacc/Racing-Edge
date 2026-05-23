@@ -31,6 +31,17 @@ def run_odds_scraper():
     except Exception as e:
         print(f"❌ Odds scraper failed: {e}")
 
+def run_future_races_scraper():
+    print(f"\n⏰ [{datetime.now().strftime('%H:%M:%S')}] Scraping future races...")
+    try:
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'collectors'))
+        from future_races_scraper import setup_table, scrape_future_races
+        setup_table()
+        scrape_future_races()
+    except Exception as e:
+        print(f"❌ Future races scraper failed: {e}")
+
 def run_results_scraper():
     """Check for race results"""
     print(f"\n⏰ [{datetime.now().strftime('%H:%M:%S')}] Checking for results...")
@@ -137,10 +148,12 @@ def run_automation():
     schedule.every(10).minutes.do(run_results_scraper)
     schedule.every(2).minutes.do(check_high_confidence_bets)
     schedule.every(6).hours.do(retrain_model)
+    schedule.every(6).hours.do(run_future_races_scraper)
     schedule.every().day.at("21:00").do(daily_summary)
     
     # Run immediately
     run_odds_scraper()
+    run_future_races_scraper()
     check_high_confidence_bets()
     
     # Main loop

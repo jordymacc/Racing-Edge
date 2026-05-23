@@ -137,3 +137,37 @@ def extract_features_for_race(race_name, engine=None):
         })
 
     return pd.DataFrame(features)
+
+# ========================
+# KINGSLEY INTEGRATION
+# ========================
+
+from kingsley_ratings import add_kingsley_analysis
+
+def analyse_race_with_kingsley(df, race_context=None, speed_map_df=None, bias_profile="Neutral"):
+    """
+    Your original analyse_race() but now with full Kingsley layer added.
+    """
+    df = df.copy()
+    
+    # Run your existing pipeline first
+    df = analyse_race(df)                    # Your current function
+    
+    if speed_map_df is not None:
+        df = apply_manual_speed_map(df, speed_map_df)
+    
+    if bias_profile != "Neutral":
+        df = apply_track_bias(df, bias_profile)
+    
+    if race_context:
+        df = apply_v2_context_adjustments(df, race_context)
+    
+    df = apply_v23_template_scoring(df)
+    
+    # === ADD KINGSLEY ON TOP ===
+    df = add_kingsley_analysis(df)
+    
+    # Final sort using combined logic
+    df = df.sort_values(by=['Kingsley_Score', 'Rating'], ascending=False)
+    
+    return df

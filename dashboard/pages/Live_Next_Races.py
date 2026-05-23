@@ -118,10 +118,11 @@ if df.empty:
 latest = df.sort_values("timestamp").groupby(["race_name","horse_name"]).last().reset_index()
 
 # ── Get races sorted by favourite odds (proxy for race proximity) ──
-race_favs = latest.groupby("race_name")["win_odds_racingcom"].min().reset_index()
-race_favs.columns = ["race_name","fav_odds"]
-race_favs = race_favs.sort_values("fav_odds").head(5)
-next_races = race_favs["race_name"].tolist()
+# Sort by most recently updated odds = most likely about to jump
+race_latest_ts = df.groupby("race_name")["timestamp"].max().reset_index()
+race_latest_ts.columns = ["race_name","latest_ts"]
+race_latest_ts = race_latest_ts.sort_values("latest_ts", ascending=False).head(5)
+next_races = race_latest_ts["race_name"].tolist()
 
 st.markdown(f"### Showing next {len(next_races)} races across all venues")
 st.divider()
@@ -139,9 +140,9 @@ for race_name in next_races:
     with col1:
         st.markdown(f"## 🏇 {race_name}")
     with col2:
-        st.metric("🌿 Track", track or "N/A")
+        st.metric("🌿 Track", track if track and track != "nan" and track != "unknown" else "N/A")
     with col3:
-        st.metric("🌡️ Temp", f"{temp:.0f}°C" if temp else "N/A")
+        st.metric("🌡️ Temp", f"{float(temp):.0f}°C" if temp and str(temp) != "nan" else "N/A")
     with col4:
         st.metric("🐎 Runners", num_runners)
 

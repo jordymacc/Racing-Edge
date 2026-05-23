@@ -19,7 +19,7 @@ import os
 import sys
 import streamlit as st
 import dashboard.dashboard_predictions as dashboard_predictions
-from engines.race_intelligence_engine import run_race_intelligence
+# from engines.race_intelligence_engine import run_race_intelligence
 import pandas as pd
 import sqlite3
 from pathlib import Path
@@ -94,7 +94,7 @@ def ensure_app_columns(dataframe):
 
 try:
     predictions = dashboard_predictions.get_ml_predictions_for_dashboard()
-    predictions = run_race_intelligence(predictions)
+    # predictions = run_race_intelligence(predictions)
 
     if predictions is not None and len(predictions) > 0:
         st.subheader("🏆 Top ML Picks")
@@ -106,7 +106,7 @@ except Exception as e:
 
 try:
     predictions = dashboard_predictions.get_ml_predictions_for_dashboard()
-    predictions = run_race_intelligence(predictions)
+    # predictions = run_race_intelligence(predictions)
 
     if predictions is not None and len(predictions) > 0:
         st.subheader("🏆 Top ML Picks")

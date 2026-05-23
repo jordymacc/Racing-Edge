@@ -1,3 +1,9 @@
+import sys
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(BASE_DIR))
+
 import os
 import sys
 import streamlit as st
@@ -7,7 +13,6 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime, timedelta
 from streamlit_autorefresh import st_autorefresh
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from theme import inject_css
 
 
@@ -16,7 +21,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Now we can use BASE_DIR in imports
 import sys
-sys.path.insert(0, str(BASE_DIR / 'models'))
 
 from ratings_engine import (
     analyse_race,

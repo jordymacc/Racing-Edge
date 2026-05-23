@@ -168,7 +168,6 @@ def get_ml_predictions_for_dashboard():
         print(f"  {len(odds_df)} odds rows, {len(odds_df['race_name'].unique())} races")
 
         df = build_features(odds_df, jockey_df, trainer_df)
-df = calculate_bullet_price_v2(df)
         if df is None or df.empty:
             return None
 

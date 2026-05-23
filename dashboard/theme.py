@@ -130,6 +130,46 @@ DARK_CSS = """
         border-radius: 3px;
     }
 
+    /* ── MOBILE RESPONSIVE ── */
+    @media (max-width: 768px) {
+        /* Hide Streamlit sidebar toggle on mobile */
+        .stApp > header { display: none; }
+        
+        /* Full width content */
+        .main .block-container {
+            padding: 0.5rem 0.5rem !important;
+            max-width: 100% !important;
+        }
+
+        /* Bigger tap targets */
+        .stButton > button {
+            min-height: 48px !important;
+            font-size: 1rem !important;
+            width: 100% !important;
+        }
+
+        /* Stack metrics vertically */
+        [data-testid="column"] {
+            min-width: 45% !important;
+        }
+
+        /* Smaller headings */
+        h1 { font-size: 1.4rem !important; }
+        h2 { font-size: 1.1rem !important; }
+        h3 { font-size: 1rem !important; }
+
+        /* Full width dataframes */
+        [data-testid="stDataFrame"] {
+            width: 100% !important;
+        }
+
+        /* Sidebar hidden by default on mobile */
+        [data-testid="stSidebar"] {
+            min-width: 0 !important;
+            width: 0 !important;
+        }
+    }
+
     /* HIGH confidence badge */
     .high-conf {
         background-color: rgba(0, 255, 136, 0.15);

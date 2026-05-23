@@ -126,56 +126,51 @@ for venue in sorted(venues):
 
         card = f"""
         <div style="
-            background:linear-gradient(135deg, #12121A 0%, #1a1a2e 100%);
+            background:linear-gradient(135deg,#12121A 0%,#1a1a2e 100%);
             border:1px solid {colour}44;
             border-left:6px solid {colour};
             border-radius:10px;
-            padding:16px 24px;
+            padding:14px 16px;
             margin-bottom:12px;
         ">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+            <!-- Horse name row -->
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
                 <div>
-                    <div style="color:#888;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;">
-                        Race {race_num}
-                    </div>
-                    <div style="color:{colour};font-size:1.3rem;font-weight:800;margin:2px 0;">
-                        {bet["horse_name"]}
-                    </div>
-                    <div style="color:#666;font-size:0.8rem;">
-                        {bet.get("jockey_name", "-")} | {bet.get("trainer_name", "-")}
-                    </div>
+                    <div style="color:#888;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;">Race {race_num}</div>
+                    <div style="color:{colour};font-size:1.2rem;font-weight:800;">{bet["horse_name"]}</div>
+                    <div style="color:#666;font-size:0.75rem;">{bet.get("jockey_name","-")} | {bet.get("trainer_name","-")}</div>
                 </div>
-                <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
-                    <div style="text-align:center;">
-                        <div style="color:#555;font-size:0.65rem;text-transform:uppercase;">Market Odds</div>
-                        <div style="color:#fff;font-size:1.2rem;font-weight:700;">${bet["win_odds_racingcom"]:.2f}</div>
-                    </div>
-                    <div style="text-align:center;">
-                        <div style="color:#555;font-size:0.65rem;text-transform:uppercase;">Fair Odds</div>
-                        <div style="color:#fff;font-size:1.2rem;font-weight:700;">${bet["fair_odds"]}</div>
-                    </div>
-                    <div style="text-align:center;">
-                        <div style="color:#555;font-size:0.65rem;text-transform:uppercase;">ML Prob</div>
-                        <div style="color:#fff;font-size:1.2rem;font-weight:700;">{bet["ml_prob"]*100:.1f}%</div>
-                    </div>
-                    <div style="text-align:center;">
-                        <div style="color:#555;font-size:0.65rem;text-transform:uppercase;">Edge</div>
-                        <div style="color:{colour};font-size:1.2rem;font-weight:700;">{bet["edge"]:+.1f}%</div>
-                    </div>
-                    <div style="text-align:center;">
-                        <div style="color:#555;font-size:0.65rem;text-transform:uppercase;">Kelly Bet</div>
-                        <div style="color:{colour};font-size:1.2rem;font-weight:700;">${kelly:.2f}</div>
-                    </div>
-                    <div style="
-                        background:{colour}22;
-                        border:2px solid {colour};
-                        border-radius:8px;
-                        padding:8px 20px;
-                        text-align:center;
-                        min-width:130px;
-                    ">
-                        <div style="color:{colour};font-size:1rem;font-weight:800;">{label}</div>
-                    </div>
+                <div style="
+                    background:{colour}22;
+                    border:2px solid {colour};
+                    border-radius:8px;
+                    padding:6px 14px;
+                    text-align:center;
+                ">
+                    <div style="color:{colour};font-size:0.85rem;font-weight:800;white-space:nowrap;">{label}</div>
+                </div>
+            </div>
+            <!-- Stats grid - wraps on mobile -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:8px;">
+                <div style="background:#0A0A0F;border-radius:6px;padding:8px;text-align:center;">
+                    <div style="color:#555;font-size:0.6rem;text-transform:uppercase;">Odds</div>
+                    <div style="color:#fff;font-size:1rem;font-weight:700;">${bet["win_odds_racingcom"]:.2f}</div>
+                </div>
+                <div style="background:#0A0A0F;border-radius:6px;padding:8px;text-align:center;">
+                    <div style="color:#555;font-size:0.6rem;text-transform:uppercase;">Fair</div>
+                    <div style="color:#fff;font-size:1rem;font-weight:700;">${bet["fair_odds"]}</div>
+                </div>
+                <div style="background:#0A0A0F;border-radius:6px;padding:8px;text-align:center;">
+                    <div style="color:#555;font-size:0.6rem;text-transform:uppercase;">ML Prob</div>
+                    <div style="color:#fff;font-size:1rem;font-weight:700;">{bet["ml_prob"]*100:.1f}%</div>
+                </div>
+                <div style="background:#0A0A0F;border-radius:6px;padding:8px;text-align:center;">
+                    <div style="color:#555;font-size:0.6rem;text-transform:uppercase;">Edge</div>
+                    <div style="color:{colour};font-size:1rem;font-weight:700;">{bet["edge"]:+.1f}%</div>
+                </div>
+                <div style="background:{colour}11;border:1px solid {colour}44;border-radius:6px;padding:8px;text-align:center;">
+                    <div style="color:#555;font-size:0.6rem;text-transform:uppercase;">Kelly Bet</div>
+                    <div style="color:{colour};font-size:1rem;font-weight:700;">${kelly:.2f}</div>
                 </div>
             </div>
         </div>

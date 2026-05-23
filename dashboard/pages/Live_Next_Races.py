@@ -178,42 +178,40 @@ for race_name in next_races:
             background:linear-gradient(135deg,#12121A 0%,#1a1a2e 100%);
             border-left:5px solid {colour};
             border-radius:8px;
-            padding:12px 20px;
+            padding:12px 14px;
             margin-bottom:8px;
-            display:flex;
-            align-items:center;
-            justify-content:space-between;
         ">
-            <div style="min-width:250px;">
-                <span style="color:{colour};font-size:1rem;font-weight:800;">{h["name"]}</span>
-                <span style="color:#666;font-size:0.75rem;margin-left:10px;">{h["jockey"]}</span>
-            </div>
-            <div style="display:flex;gap:30px;align-items:center;">
-                <div style="text-align:center;min-width:60px;">
-                    <div style="color:#555;font-size:0.65rem;text-transform:uppercase;">Odds</div>
-                    <div style="color:#fff;font-weight:700;">${h["odds"]:.2f}</div>
-                </div>
-                <div style="text-align:center;min-width:60px;">
-                    <div style="color:#555;font-size:0.65rem;text-transform:uppercase;">ML Prob</div>
-                    <div style="color:#fff;font-weight:700;">{prob_display}</div>
-                </div>
-                <div style="text-align:center;min-width:60px;">
-                    <div style="color:#555;font-size:0.65rem;text-transform:uppercase;">Fair Odds</div>
-                    <div style="color:#fff;font-weight:700;">{fair_display}</div>
-                </div>
-                <div style="text-align:center;min-width:70px;">
-                    <div style="color:#555;font-size:0.65rem;text-transform:uppercase;">Edge</div>
-                    <div style="color:{colour};font-weight:700;">{h["edge"]:+.1f}%</div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+                <div>
+                    <span style="color:{colour};font-size:1rem;font-weight:800;">{h["name"]}</span>
+                    <div style="color:#666;font-size:0.75rem;">{h["jockey"]}</div>
                 </div>
                 <div style="
                     background:{colour}22;
                     border:1px solid {colour};
                     border-radius:6px;
-                    padding:5px 12px;
-                    min-width:120px;
+                    padding:4px 10px;
                     text-align:center;
                 ">
-                    <span style="color:{colour};font-weight:800;font-size:0.85rem;">{h["label"]}</span>
+                    <span style="color:{colour};font-weight:800;font-size:0.8rem;white-space:nowrap;">{h["label"]}</span>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+                <div style="background:#0A0A0F;border-radius:5px;padding:6px;text-align:center;">
+                    <div style="color:#555;font-size:0.6rem;text-transform:uppercase;">Odds</div>
+                    <div style="color:#fff;font-size:0.9rem;font-weight:700;">${h["odds"]:.2f}</div>
+                </div>
+                <div style="background:#0A0A0F;border-radius:5px;padding:6px;text-align:center;">
+                    <div style="color:#555;font-size:0.6rem;text-transform:uppercase;">ML</div>
+                    <div style="color:#fff;font-size:0.9rem;font-weight:700;">{prob_display}</div>
+                </div>
+                <div style="background:#0A0A0F;border-radius:5px;padding:6px;text-align:center;">
+                    <div style="color:#555;font-size:0.6rem;text-transform:uppercase;">Fair</div>
+                    <div style="color:#fff;font-size:0.9rem;font-weight:700;">{fair_display}</div>
+                </div>
+                <div style="background:#0A0A0F;border-radius:5px;padding:6px;text-align:center;">
+                    <div style="color:#555;font-size:0.6rem;text-transform:uppercase;">Edge</div>
+                    <div style="color:{colour};font-size:0.9rem;font-weight:700;">{h["edge"]:+.1f}%</div>
                 </div>
             </div>
         </div>

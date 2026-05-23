@@ -18,6 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 import os
 import sys
 import streamlit as st
+import dashboard.dashboard_predictions as dashboard_predictions
 from engines.race_intelligence_engine import run_race_intelligence
 import pandas as pd
 import sqlite3
@@ -91,7 +92,17 @@ def ensure_app_columns(dataframe):
 # ═══════════════════════════════════════════════════════════
 # 🤖 ML PREDICTIONS SECTION
 
-import dashboard.dashboard_predictions as dashboard_predictions
+try:
+    predictions = dashboard_predictions.get_ml_predictions_for_dashboard()
+    predictions = run_race_intelligence(predictions)
+
+    if predictions is not None and len(predictions) > 0:
+        st.subheader("🏆 Top ML Picks")
+        top_picks = predictions.nlargest(5, 'predicted_win_prob')
+
+except Exception as e:
+    st.error(f"ML Error: {e}")
+
 
 try:
     predictions = dashboard_predictions.get_ml_predictions_for_dashboard()

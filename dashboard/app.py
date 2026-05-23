@@ -94,8 +94,6 @@ def ensure_app_columns(dataframe):
 
 
 import dashboard.dashboard_predictions as dashboard_predictions
- st.header("🤖 Machine Learning Predictions")
- 
  try:
      predictions = dashboard_predictions.get_ml_predictions_for_dashboard()
      predictions = run_race_intelligence(predictions)

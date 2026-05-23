@@ -16,7 +16,7 @@ from theme import inject_css
 st.set_page_config(page_title="Best Bets Today", page_icon="🏆", layout="wide")
 inject_css()
 
-st_autorefresh(interval=60000, key="bestbets_refresh")
+st_autorefresh(interval=3600000, key="bestbets_refresh")
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 

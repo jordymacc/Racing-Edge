@@ -1,4 +1,5 @@
 import sys
+import dashboard.dashboard_predictions as dashboard_predictions
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -91,12 +92,12 @@ def ensure_app_columns(dataframe):
 # 🤖 ML PREDICTIONS SECTION
 # ═══════════════════════════════════════════════════════════
 
-st.header("🤖 Machine Learning Predictions")
-
-try:
-    predictions = dashboard_predictions.get_ml_predictions_for_dashboard()
-    predictions = run_race_intelligence(predictions)
-
+ st.header("🤖 Machine Learning Predictions")
+ 
+ try:
+     predictions = dashboard_predictions.get_ml_predictions_for_dashboard()
+     predictions = run_race_intelligence(predictions)
+ 
     if predictions is not None and len(predictions) > 0:
         st.subheader("🏆 Top ML Picks")
         top_picks = predictions.nlargest(5, 'predicted_win_prob')

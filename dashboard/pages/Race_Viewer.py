@@ -146,9 +146,12 @@ try:
         "temperature", "rainfall", "wet_track", "temp_normalized"
     ]
     odds_df, jockey_df, trainer_df = fetch_all_data()
+    st.caption(f"Debug: {len(odds_df)} total odds rows, races: {odds_df['race_name'].nunique()}")
     race_odds = odds_df[odds_df["race_name"] == selected_race]
+    st.caption(f"Debug: {len(race_odds)} rows for {selected_race}")
     if not race_odds.empty:
         race_features = build_features(race_odds, jockey_df, trainer_df)
+        st.caption(f"Debug: features={len(race_features) if race_features is not None else 'None'}")
         if race_features is not None:
             X = race_features[FEATURES].fillna(0)
             probs = model.predict_proba(X)[:, 1]

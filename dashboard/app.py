@@ -90,30 +90,41 @@ def ensure_app_columns(dataframe):
     return safe_df
 
 # ═══════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
 # 🤖 ML PREDICTIONS SECTION
-
 try:
     predictions = dashboard_predictions.get_ml_predictions_for_dashboard()
-    # predictions = run_race_intelligence(predictions)
-
     if predictions is not None and len(predictions) > 0:
         st.subheader("🏆 Top ML Picks")
         top_picks = predictions.nlargest(5, 'predicted_win_prob')
-
+        for idx, pick in top_picks.iterrows():
+            conf = pick.get('confidence', 'LOW')
+            if conf == 'HIGH':
+                st.success(f"**{pick['race_name']}** — {pick['horse_name']}")
+            elif conf == 'MEDIUM':
+                st.warning(f"**{pick['race_name']}** — {pick['horse_name']}")
+            else:
+                st.info(f"**{pick['race_name']}** — {pick['horse_name']}")
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("💰 Odds", f"${pick['current_odds']:.1f}")
+            with col2:
+                st.metric("🎯 Win Prob", f"{pick['predicted_win_prob']*100:.1f}%")
+            with col3:
+                fav = "✅ Fav" if pick['is_favorite'] == 1 else "❌"
+                st.metric("📊 Market", fav)
+            with col4:
+                emoji = "🔥" if conf == 'HIGH' else "⚡" if conf == 'MEDIUM' else "💡"
+                st.metric("🎲 Confidence", f"{emoji} {conf}")
+            st.divider()
+        st.caption("🤖 Powered by Ensemble ML Model v4")
+    else:
+        st.info("⏳ No races running right now. Check back when racing starts!")
 except Exception as e:
     st.error(f"ML Error: {e}")
+    import traceback
+    st.code(traceback.format_exc())
 
-
-try:
-    predictions = dashboard_predictions.get_ml_predictions_for_dashboard()
-    # predictions = run_race_intelligence(predictions)
-
-    if predictions is not None and len(predictions) > 0:
-        st.subheader("🏆 Top ML Picks")
-        top_picks = predictions.nlargest(5, 'predicted_win_prob')
-
-except Exception as e:
-    st.error(f"ML Error: {e}")
 # SAFE TABLE VIEW HELPER
 # -----------------------------
 def safe_view(dataframe, columns):

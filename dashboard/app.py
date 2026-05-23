@@ -90,21 +90,19 @@ def ensure_app_columns(dataframe):
 
 # ═══════════════════════════════════════════════════════════
 # 🤖 ML PREDICTIONS SECTION
-# ═══════════════════════════════════════════════════════════
-
 
 import dashboard.dashboard_predictions as dashboard_predictions
- try:
-     predictions = dashboard_predictions.get_ml_predictions_for_dashboard()
-     predictions = run_race_intelligence(predictions)
- 
+
+try:
+    predictions = dashboard_predictions.get_ml_predictions_for_dashboard()
+    predictions = run_race_intelligence(predictions)
+
     if predictions is not None and len(predictions) > 0:
         st.subheader("🏆 Top ML Picks")
         top_picks = predictions.nlargest(5, 'predicted_win_prob')
 
 except Exception as e:
     st.error(f"ML Error: {e}")
-
 # SAFE TABLE VIEW HELPER
 # -----------------------------
 def safe_view(dataframe, columns):

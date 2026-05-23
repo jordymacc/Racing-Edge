@@ -3,7 +3,6 @@ import sqlite3
 import joblib
 import pandas as pd
 import numpy as np
-from engines.bullet_price_v2 import calculate_bullet_price_v2
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent

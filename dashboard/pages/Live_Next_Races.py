@@ -99,7 +99,8 @@ def get_race_predictions(df, jockey_df):
 
 # ── Header ──
 st.markdown("# 🔴 Live Next Races")
-st.markdown(f"<p style='color:#888;margin-top:-1rem;'>Auto-refreshes every 30 seconds • Last update: {datetime.now().strftime('%H:%M:%S')}</p>", unsafe_allow_html=True)
+from zoneinfo import ZoneInfo as _ZI
+st.markdown(f"<p style='color:#666;margin-top:-1rem;font-size:0.85rem;'>Refreshes every 30s • {datetime.now(_ZI('Australia/Melbourne')).strftime('%H:%M:%S')} AEST</p>", unsafe_allow_html=True)
 
 # ── Load data ──
 with st.spinner("Loading live races..."):

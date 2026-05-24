@@ -235,7 +235,7 @@ for race_date, venue, state in sorted(filtered):
                         </div>
                         <div style="background:#0A0A0F;border-radius:5px;padding:6px;text-align:center;">
                             <div style="color:#555;font-size:0.6rem;text-transform:uppercase;">Edge</div>
-                            <div style="color:{colour};font-size:0.9rem;font-weight:700;">{edge:+.1f}% if odds else "—"</div>
+                            <div style="color:{colour};font-size:0.9rem;font-weight:700;">{f"{edge:+.1f}%" if odds else "—"}</div>
                         </div>
                     </div>
                 </div>

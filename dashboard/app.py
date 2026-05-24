@@ -37,6 +37,20 @@ with st.spinner("Loading live predictions..."):
 
 if predictions is None or len(predictions) == 0:
     st.info("⏳ No races running right now. Check back when racing starts — usually from 11am AEST.")
+    st.markdown("### 🔗 Explore while you wait")
+    c1, c2, c3, c4 = st.columns(4)
+    for col, emoji, title, desc in [
+        (c1, "🏆", "Best Bets Today", "Today's top value plays"),
+        (c2, "🔮", "Future Races", "Next 3 days of fields"),
+        (c3, "🔴", "Live Next Races", "Real-time race cards"),
+        (c4, "📊", "Performance", "P&L and ROI tracking"),
+    ]:
+        col.markdown(f"""<div style="background:#12121A;border:1px solid #1E1E2E;border-radius:8px;padding:14px;text-align:center;">
+            <div style="font-size:1.5rem;">{emoji}</div>
+            <div style="color:#00FF88;font-weight:700;font-size:0.9rem;margin:4px 0;">{title}</div>
+            <div style="color:#666;font-size:0.75rem;">{desc}</div>
+        </div>""", unsafe_allow_html=True)
+    st.stop()
     st.stop()
 
 total_races = predictions["race_name"].nunique()

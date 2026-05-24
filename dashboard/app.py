@@ -4,6 +4,7 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
+import zoneinfo
 from streamlit_autorefresh import st_autorefresh
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,7 +23,7 @@ inject_css()
 st_autorefresh(interval=60000, key="main_refresh")
 
 st.markdown("# 🏇 JordyMac Racing Engine")
-st.markdown(f"<p style='color:#888;margin-top:-1rem;'>AI-powered racing intelligence • {datetime.now().strftime('%H:%M:%S')}</p>", unsafe_allow_html=True)
+st.markdown(f"<p style='color:#888;margin-top:-1rem;'>AI-powered racing intelligence • {datetime.now(zoneinfo.ZoneInfo('Australia/Melbourne')).strftime('%H:%M:%S')}</p>", unsafe_allow_html=True)
 st.divider()
 
 import dashboard_predictions

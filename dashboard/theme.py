@@ -91,3 +91,4 @@ def page_header(title, subtitle=None):
     if subtitle:
         st.markdown(f"<p style='color:#666;margin-top:-0.8rem;font-size:0.85rem;'>{subtitle}</p>",
                    unsafe_allow_html=True)
+# UI v2.0 - Sun May 24 07:24:32 UTC 2026

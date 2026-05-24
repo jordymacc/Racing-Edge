@@ -1,113 +1,130 @@
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + "/..")
-from theme import page_header, inject_css
-
+import os
+import sys
 import streamlit as st
 import pandas as pd
-import sqlite3
 from pathlib import Path
-import sys
+from datetime import datetime
 
-# Setup paths
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-DB_PATH = BASE_DIR / "database" / "racing.db"
+sys.path.insert(0, str(BASE_DIR / "models"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + "/..")
+from theme import inject_css
 
-st.set_page_config(page_title="Performance Tracker", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Performance", page_icon="📈", layout="wide")
 inject_css()
 
-st.title("📊 Model Performance Tracker")
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-# Get performance stats
-conn = sqlite3.connect(DB_PATH)
+def get_conn():
+    if DATABASE_URL:
+        import psycopg2
+        return psycopg2.connect(DATABASE_URL)
+    import sqlite3
+    return sqlite3.connect(str(BASE_DIR / "database" / "racing.db"))
 
-# Overall stats
-query_overall = """
-    SELECT 
-        COUNT(*) as total_bets,
-        SUM(CASE WHEN actual_result = 1 THEN 1 ELSE 0 END) as wins,
-        SUM(profit_loss) as total_pl
-    FROM ml_predictions_log
-    WHERE settled = 1
-"""
+st.markdown("# 📈 Performance")
+st.markdown("<p style='color:#666;margin-top:-1rem;font-size:0.85rem;'>Real P&L tracking on ML predictions</p>",
+            unsafe_allow_html=True)
 
-df_overall = pd.read_sql_query(query_overall, conn)
+try:
+    conn = get_conn()
 
-if df_overall['total_bets'].iloc[0] > 0:
-    total_bets = int(df_overall['total_bets'].iloc[0])
-    wins = int(df_overall['wins'].iloc[0])
-    losses = total_bets - wins
-    total_pl = float(df_overall['total_pl'].iloc[0])
-    win_rate = (wins / total_bets * 100) if total_bets > 0 else 0
-    roi = (total_pl / (total_bets * 10) * 100) if total_bets > 0 else 0
-    
-    # Display metrics
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
-    with col1:
-        st.metric("Total Bets", total_bets)
-    with col2:
-        st.metric("Wins", wins, delta=f"{win_rate:.1f}%")
-    with col3:
-        st.metric("Losses", losses)
-    with col4:
-        st.metric("Total P&L", f"${total_pl:,.2f}", delta=f"${total_pl/total_bets:.2f}/bet")
-    with col5:
-        st.metric("ROI", f"{roi:+.1f}%", delta="Profit" if roi > 0 else "Loss")
-    
-    st.divider()
-    
-    # Recent bets
-    st.subheader("📋 Recent Settled Bets")
-    
-    query_recent = """
-        SELECT 
-            timestamp,
-            race_name,
-            horse_name,
-            ROUND(predicted_win_prob * 100, 1) as confidence_pct,
-            current_odds,
-            CASE WHEN actual_result = 1 THEN '✅ WON' ELSE '❌ LOST' END as result,
-            ROUND(profit_loss, 2) as pl
-        FROM ml_predictions_log
-        WHERE settled = 1
-        ORDER BY timestamp DESC
-        LIMIT 50
-    """
-    
-    df_recent = pd.read_sql_query(query_recent, conn)
-    df_recent['timestamp'] = pd.to_datetime(df_recent['timestamp']).dt.strftime('%Y-%m-%d %H:%M')
-    
-    st.dataframe(df_recent, hide_index=True, use_container_width=True)
-    
-else:
-    st.info("⏳ No settled bets yet. Predictions are being tracked and will appear here once races finish!")
-    
-    # Show pending predictions
-    st.subheader("⏳ Pending Predictions")
-    
-    query_pending = """
-        SELECT 
-            timestamp,
-            race_name,
-            horse_name,
-            ROUND(predicted_win_prob * 100, 1) as confidence_pct,
-            current_odds,
-            confidence
-        FROM ml_predictions_log
-        WHERE settled = 0
-        ORDER BY predicted_win_prob DESC
-        LIMIT 20
-    """
-    
-    df_pending = pd.read_sql_query(query_pending, conn)
-    
-    if not df_pending.empty:
-        df_pending['timestamp'] = pd.to_datetime(df_pending['timestamp']).dt.strftime('%Y-%m-%d %H:%M')
-        st.dataframe(df_pending, hide_index=True, use_container_width=True)
+    # ── Summary stats ──
+    if DATABASE_URL:
+        summary = pd.read_sql_query("""
+            SELECT
+                COUNT(*) as total_bets,
+                SUM(CASE WHEN actual_result = 'WON' THEN 1 ELSE 0 END) as wins,
+                SUM(profit_loss) as total_pl,
+                SUM(kelly_bet) as total_staked,
+                AVG(edge) as avg_edge
+            FROM ml_predictions_log
+            WHERE settled = 1
+        """, conn)
     else:
-        st.write("No pending predictions")
+        summary = pd.read_sql_query("""
+            SELECT
+                COUNT(*) as total_bets,
+                SUM(CASE WHEN actual_result = 'WON' THEN 1 ELSE 0 END) as wins,
+                SUM(profit_loss) as total_pl,
+                SUM(kelly_bet) as total_staked,
+                AVG(edge) as avg_edge
+            FROM ml_predictions_log
+            WHERE settled = 1
+        """, conn)
 
-conn.close()
+    row = summary.iloc[0]
+    total = int(row["total_bets"] or 0)
+    wins = int(row["wins"] or 0)
+    pl = float(row["total_pl"] or 0)
+    staked = float(row["total_staked"] or 0)
+    avg_edge = float(row["avg_edge"] or 0)
+    win_rate = round(wins / total * 100, 1) if total > 0 else 0
+    roi = round(pl / staked * 100, 1) if staked > 0 else 0
+    bankroll = 500 + pl
 
-from streamlit_autorefresh import st_autorefresh
-st_autorefresh(interval=30000, key="performance_refresh")
+    col1, col2, col3, col4, col5 = st.columns(5)
+    col1.metric("🎯 Total Bets", total)
+    col2.metric("✅ Win Rate", f"{win_rate}%", f"{wins}/{total}")
+    col3.metric("💰 P&L", f"${pl:+.2f}")
+    col4.metric("📊 ROI", f"{roi:+.1f}%")
+    col5.metric("🏦 Bankroll", f"${bankroll:.2f}", f"${pl:+.2f}")
+
+    st.divider()
+
+    # ── Unsettled predictions ──
+    unsettled_count = pd.read_sql_query(
+        "SELECT COUNT(*) as n FROM ml_predictions_log WHERE settled = 0", conn
+    ).iloc[0]["n"]
+
+    if unsettled_count > 0:
+        st.info(f"⏳ {int(unsettled_count)} predictions waiting to be settled (races not finished yet)")
+
+    # ── Recent settled bets ──
+    st.subheader("📋 Settled Bets")
+
+    if total == 0:
+        st.info("⏳ No settled bets yet. Predictions are logged throughout the day and settled once races finish.")
+    else:
+        settled = pd.read_sql_query("""
+            SELECT timestamp, race_name, horse_name, current_odds,
+                   predicted_win_prob, edge, kelly_bet,
+                   actual_result, profit_loss
+            FROM ml_predictions_log
+            WHERE settled = 1
+            ORDER BY timestamp DESC
+            LIMIT 100
+        """, conn)
+
+        # Format
+        settled["timestamp"] = pd.to_datetime(settled["timestamp"]).dt.strftime("%d %b %H:%M")
+        settled["predicted_win_prob"] = (settled["predicted_win_prob"] * 100).round(1).astype(str) + "%"
+        settled["edge"] = settled["edge"].apply(lambda x: f"{x:+.1f}%")
+        settled["current_odds"] = settled["current_odds"].apply(lambda x: f"${x:.2f}")
+        settled["kelly_bet"] = settled["kelly_bet"].apply(lambda x: f"${x:.2f}")
+        settled["profit_loss"] = settled["profit_loss"].apply(lambda x: f"${x:+.2f}")
+        settled.columns = ["Time", "Race", "Horse", "Odds", "ML Prob", "Edge", "Bet", "Result", "P&L"]
+
+        st.dataframe(settled, use_container_width=True, hide_index=True)
+
+        # ── P&L chart ──
+        st.subheader("📈 Bankroll Growth")
+        pl_data = pd.read_sql_query("""
+            SELECT timestamp, SUM(profit_loss) OVER (ORDER BY timestamp) as cumulative_pl
+            FROM ml_predictions_log
+            WHERE settled = 1
+            ORDER BY timestamp
+        """, conn)
+
+        if len(pl_data) > 1:
+            pl_data["bankroll"] = 500 + pl_data["cumulative_pl"]
+            pl_data["timestamp"] = pd.to_datetime(pl_data["timestamp"])
+            pl_data = pl_data.set_index("timestamp")
+            st.line_chart(pl_data["bankroll"])
+
+    conn.close()
+
+except Exception as e:
+    st.error(f"Error loading performance data: {e}")
+    import traceback
+    st.code(traceback.format_exc())

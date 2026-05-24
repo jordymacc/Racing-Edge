@@ -42,6 +42,22 @@ def run_future_races_scraper():
     except Exception as e:
         print(f"❌ Future races scraper failed: {e}")
 
+def log_and_settle():
+    """Log new predictions and settle finished races"""
+    print(f"\n⏰ [{datetime.now().strftime('%H:%M:%S')}] Logging predictions and settling bets...")
+    try:
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'models'))
+        from bet_settler import setup_tables, log_predictions, settle_predictions
+        from dashboard_predictions import get_ml_predictions_for_dashboard
+        setup_tables()
+        preds = get_ml_predictions_for_dashboard()
+        if preds is not None:
+            log_predictions(preds)
+        settle_predictions()
+    except Exception as e:
+        print(f"❌ Settle failed: {e}")
+
 def run_results_scraper():
     """Check for race results"""
     print(f"\n⏰ [{datetime.now().strftime('%H:%M:%S')}] Checking for results...")
@@ -146,6 +162,7 @@ def run_automation():
     # Schedule jobs
     schedule.every(1).minutes.do(run_odds_scraper)
     schedule.every(10).minutes.do(run_results_scraper)
+    schedule.every(10).minutes.do(log_and_settle)
     schedule.every(2).minutes.do(check_high_confidence_bets)
     schedule.every(6).hours.do(retrain_model)
     schedule.every(6).hours.do(run_future_races_scraper)

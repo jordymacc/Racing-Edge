@@ -33,7 +33,7 @@ def get_value_label(edge_pct):
     else:                 return "❌ SKIP"
 
 st.markdown("# 🔮 Future Races")
-st.markdown("<p style='color:#888;margin-top:-1rem;'>Next 3 days of race fields with early ML ratings</p>",
+st.markdown("<p style='color:#888;margin-top:-1rem;'>Next 3 days of race fields with early ML ratings • Updated</p>",
             unsafe_allow_html=True)
 
 # ── Load future races ──
